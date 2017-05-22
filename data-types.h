@@ -18,7 +18,7 @@ typedef struct {
     ssize_t src_sz;
     int32_t *positions;
     double score;
-    size_t idx;
+    ssize_t idx;
 } Candidate;
 
 VECTOR_OF(int32_t, Positions);
