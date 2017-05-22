@@ -1,0 +1,7 @@
+package "subsequence-matcher"
+version "1.0.0"
+usage "subsequence-matcher [OPTIONS] query"
+description "Filter a newline separated list of strings from STDIN to STDOUT based on the query. Does subsequence matching and returns the results sorted by relevance."
+
+option "limit" l "Limit the number of returned results."
+	int typestr="number" default="0" optional
