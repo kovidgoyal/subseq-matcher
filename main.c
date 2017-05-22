@@ -15,6 +15,19 @@
 #include <string.h>
 
 
+static int
+run_scoring(Candidate *haystack, char *needle, int32_t needle_len, int32_t max_haystack_len) {
+    int ret = 0;
+    CacheItem ***cache = alloc_cache(needle_len, max_haystack_len);
+    Stack *stack = alloc_stack(needle_len, max_haystack_len);
+    if (cache == NULL || stack == NULL) { REPORT_OOM; free(stack); free(cache); return 1; }
+
+
+    stack = free_stack(stack);
+    cache = free_cache(cache);
+    return ret;
+}
+
 
 static int 
 read_stdin(char *needle, char* level1, char* level2, char *level3) {
@@ -62,9 +75,7 @@ read_stdin(char *needle, char* level1, char* level2, char *level3) {
 
     Candidate *haystack = &ITEM(candidates, 0);
 
-    for (ssize_t i = 0; i < SIZE(candidates); i++) {
-        printf("%s\n", haystack[i].src);
-    }
+    ret = run_scoring(haystack, needle, needle_len, max_haystack_len);
 
     if (linebuf) free(linebuf);
     linebuf = NULL;

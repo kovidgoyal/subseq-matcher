@@ -23,3 +23,31 @@ typedef struct {
 VECTOR_OF(int32_t, Positions);
 VECTOR_OF(char, Chars);
 VECTOR_OF(Candidate, Candidates);
+
+
+typedef struct {
+    double score;
+    int32_t *positions;
+} CacheItem;
+
+
+typedef struct {
+    int32_t hidx;
+    int32_t nidx;
+    int32_t last_idx;
+    double score;
+    int32_t *positions;
+} StackItem;
+
+typedef struct {
+    ssize_t pos;
+    int32_t needle_len;
+    size_t size;
+    StackItem *items;
+} Stack;
+
+
+Stack* alloc_stack(int32_t needle_len, int32_t max_haystack_len);
+Stack* free_stack(Stack *stack);
+CacheItem*** alloc_cache(int32_t needle_len, int32_t max_haystack_len);
+CacheItem*** free_cache(CacheItem ***);
