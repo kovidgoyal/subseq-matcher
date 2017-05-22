@@ -13,8 +13,38 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 
 typedef struct gengetopt_args_info args_info;
+static char mark_before[100] = {0}, mark_after[100] = {0};
+
+static void
+unescape(char *src, char *dest, size_t destlen) {
+    size_t srclen = strlen(src);
+    char buf[5] = {0};
+
+    for (size_t i = 0, j = 0; i < MIN(srclen, destlen); i++, j++) {
+        if (src[i] == '\\' && i < srclen - 1) {
+            switch(src[++i]) {
+#define S(x) dest[j] = x; break;
+                case 'e':
+                case 'E':
+                    S(0x1b);
+                case 'x':
+                    if (i + 1 < srclen && isxdigit(src[i]) && isxdigit(src[i+1])) {
+                        buf[0] = src[i]; buf[1] = src[i+1]; buf[2] = 0;
+                        dest[j] = (unsigned char)(strtol(buf, NULL, 16));
+                        i += 2;
+                        break;
+                    } 
+                default:
+                    S(src[i+1]);
+            }
+#undef S
+        } else dest[j] = src[i];
+    }
+}
+
 
 static int 
 cmpscore(const void *a, const void *b) {
@@ -23,19 +53,34 @@ cmpscore(const void *a, const void *b) {
     return (sa > sb) ? -1 : ((sa == sb) ? 0 : 1);
 }
 
-
 static void
-output_result(Candidate *c, args_info *opts) {
-    printf("%s\n", c->src);
+output_with_marks(char *src, int32_t *positions, int32_t poslen) {
+    int i, pos, j = 0;
+    size_t l = strlen(src);
+    for (pos = 0; pos < poslen; pos++, j++) {
+        for (i = j; i < MIN(l, positions[pos]); i++) printf("%c", src[i]);
+        j = positions[pos];
+        if (j < l) printf("%s%c%s", mark_before, src[j], mark_after);
+    }
+    for (i = positions[poslen-1] + 1; i < l; i++) printf("%c", src[i]);
+    printf("\n");
 }
 
 
 static void
-output_results(Candidate *haystack, size_t count, args_info *opts) {
+output_result(Candidate *c, args_info *opts, int32_t needle_len) {
+    if (c->score > 0.0 && (mark_before[0] || mark_after[0])) {
+        output_with_marks(c->src, c->positions, needle_len);
+    } else printf("%s\n", c->src);
+}
+
+
+static void
+output_results(Candidate *haystack, size_t count, args_info *opts, int32_t needle_len) {
     qsort(haystack, count, sizeof(*haystack), cmpscore);
     size_t left = opts->limit_arg > 0 ? opts->limit_arg : count;
     for (size_t i = 0; i < left; i++) {
-        output_result(haystack + i, opts);
+        output_result(haystack + i, opts, needle_len);
     }
 }
 
@@ -116,7 +161,7 @@ read_stdin(char *needle, args_info *opts) {
     Candidate *haystack = &ITEM(candidates, 0);
 
     ret = run_scoring(haystack, 0, SIZE(candidates), needle, needle_len, max_haystack_len, opts->level1_arg, opts->level2_arg, opts->level3_arg);
-    output_results(haystack, SIZE(candidates), opts);
+    output_results(haystack, SIZE(candidates), opts, needle_len);
 
     if (linebuf) free(linebuf);
     linebuf = NULL;
@@ -137,6 +182,8 @@ main(int argc, char *argv[]) {
         ret = 1; 
         goto end;
     }
+    if (opts.mark_before_arg) unescape(opts.mark_before_arg, mark_before, sizeof(mark_before) - 1);
+    if (opts.mark_after_arg) unescape(opts.mark_after_arg, mark_after, sizeof(mark_before) - 1);
     needle = opts.inputs[0];
     ret = read_stdin(needle, &opts);
 

@@ -7,6 +7,7 @@
 #pragma once
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 #define REPORT_OOM fprintf(stderr, "Out of memory.\n");
 

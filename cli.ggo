@@ -1,16 +1,33 @@
 package "subsequence-matcher"
 version "1.0.0"
 usage "subsequence-matcher [OPTIONS] query"
-description "Filter a newline separated list of strings from STDIN to STDOUT based on the query. Does subsequence matching and returns the results sorted by relevance."
+versiontext "Created by Kovid Goyal"
+description "\
+Filter a newline separated list of strings from STDIN to STDOUT based on the query. \
+Does subsequence matching of the query and returns the results sorted by relevance.
+
+Subsequence matching has configurable \"special characters\". If a matched \
+character occurs immediately after one of these, it's score is higher.
+"
+
+section "Control scoring"
+
+option "level1" 1 "The level 1 special characters."
+	string default="/" optional
+
+option "level2" 2 "The level 2 special characters."
+	string default="-_ 0123456789" optional
+
+option "level3" 3 "The level 3 special characters."
+	string default="." optional
+
+section "Control output"
 
 option "limit" l "Limit the number of returned results."
 	int default="0" optional
 
-option "level1" 1 "The level 1 delimiters."
-	string default="/" optional
+option "mark-before" b "String to output before each matched character"
+    string optional
 
-option "level2" 2 "The level 2 delimiters."
-	string default="-_ 0123456789" optional
-
-option "level3" 3 "The level 3 delimiters."
-	string default="." optional
+option "mark-after" a "String to output after each matched character"
+    string optional
