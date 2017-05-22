@@ -32,9 +32,9 @@ typedef struct {
 
 
 typedef struct {
-    int32_t hidx;
-    int32_t nidx;
-    int32_t last_idx;
+    size_t hidx;
+    size_t nidx;
+    size_t last_idx;
     double score;
     int32_t *positions;
 } StackItem;
@@ -65,4 +65,4 @@ Stack* alloc_stack(int32_t needle_len, int32_t max_haystack_len);
 Stack* free_stack(Stack *stack);
 CacheItem*** alloc_cache(int32_t needle_len, int32_t max_haystack_len);
 CacheItem*** free_cache(CacheItem ***);
-double score_item(MatchInfo *mi, int32_t *positions, CacheItem ***cache, Stack *stack, int32_t, int32_t);
+double score_item(MatchInfo *mi, int32_t *positions, Stack *stack, int32_t, int32_t, int32_t*);

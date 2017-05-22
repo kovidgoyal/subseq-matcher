@@ -95,22 +95,86 @@ static inline void
 clear_stack(Stack *stack) { stack->pos = -1; }
 
 static inline void 
-stack_push(Stack *stack, int32_t hidx, int32_t nidx, int32_t last_idx, double score, int32_t *positions) {
+stack_push(Stack *stack, size_t hidx, size_t nidx, size_t last_idx, double score, int32_t *positions) {
     StackItem *si = &(stack->items[++stack->pos]);
     si->hidx = hidx; si->nidx = nidx; si->last_idx = last_idx; si->score = score;
     memcpy(si->positions, positions, sizeof(*positions) * stack->needle_len);
 }
 
 static inline void 
-stack_pop(Stack *stack, int32_t *hidx, int32_t *nidx, int32_t *last_idx, double *score, int32_t *positions) {
+stack_pop(Stack *stack, size_t *hidx, size_t *nidx, size_t *last_idx, double *score, int32_t *positions) {
     StackItem *si = &(stack->items[stack->pos--]);
     *hidx = si->hidx; *nidx = si->nidx; *last_idx = si->last_idx; *score = si->score;
     memcpy(positions, si->positions, sizeof(*positions) * stack->needle_len);
 }
 
+static double 
+calc_score_for_char(MatchInfo *m, char last, char current, size_t distance_from_last_match) {
+    double factor = 1.0;
+
+    if (strchr(m->level1, last) != NULL) {
+        factor = 0.9;
+    } else if (strchr(m->level2, last) != NULL) {
+        factor = 0.8;
+    } else if ('a' <= last && last <= 'z' && 'A' <= current && current <= 'Z') {
+        factor = 0.8;  // CamelCase
+    } else if (strchr(m->level3, last) != NULL) {
+        factor = 0.7;
+    } else {
+        // If last is not a special char, factor diminishes
+        // as distance from last matched char increases
+        factor = (1.0 / distance_from_last_match) * 0.75;
+    }
+    return m->max_score_per_char * factor;
+}
+
+
+static double 
+process_item(MatchInfo *m, Stack *stack, int32_t *final_positions, int32_t *positions, int32_t needle_len) {
+    char *pos;
+    double final_score = 0.0, score = 0.0, score_for_char = 0.0;
+    size_t i, hidx, nidx, last_idx, distance;
+    CacheItem mem = {0};
+
+    memset(final_positions, 0, sizeof(int32_t) * needle_len);
+    stack_push(stack, 0, 0, 0, 0.0, final_positions);
+
+    while (stack->pos >= 0) {
+        stack_pop(stack, &hidx, &nidx, &last_idx, &score, positions);
+        mem = m->cache[hidx][nidx][last_idx];
+        if (mem.score == DBL_MAX) {
+            // No memoized result, calculate the score
+            for (i = nidx; i < m->needle_len; i++) {
+                nidx = i; 
+                if (m->haystack_len - hidx < m->needle_len - nidx) { score = 0.0; break; }
+                pos = strchr(m->haystack + hidx, m->needle[nidx]);
+                if (pos == NULL) { score = 0.0; break; } // No matches found
+                distance = pos - (m->haystack + last_idx);
+                if (distance <= 1) score_for_char = m->max_score_per_char;
+                else score_for_char = calc_score_for_char(m, m->haystack[last_idx], *pos, distance);
+                hidx++;
+                if (m->haystack_len - hidx >= m->needle_len - nidx) stack_push(stack, hidx, nidx, last_idx, score, positions);
+                last_idx = pos - m->haystack; 
+                positions[nidx] = last_idx; 
+                score += score_for_char;
+            } // for(i) iterate over needle
+            mem.score = score; memcpy(mem.positions, positions, sizeof(*positions) * m->needle_len);
+
+        } else {
+            score = mem.score; memcpy(positions, mem.positions, sizeof(*positions) * m->needle_len);
+        }
+        // We have calculated the score for this hidx, nidx, last_idx combination, update final_score and final_positions, if needed
+        if (score > final_score) {
+            final_score = score;
+            memcpy(final_positions, positions, sizeof(*positions) * m->needle_len);
+        }
+    }
+    return final_score;
+}
+
 double
-score_item(MatchInfo *mi, int32_t *positions, CacheItem ***cache, Stack *stack, int32_t needle_len, int32_t max_haystack_len) {
+score_item(MatchInfo *mi, int32_t *positions, Stack *stack, int32_t needle_len, int32_t max_haystack_len, int32_t *posbuf) {
     clear_stack(stack);
-    clear_cache(cache, needle_len, max_haystack_len);
-    return 0;
+    clear_cache(mi->cache, needle_len, max_haystack_len);
+    return process_item(mi, stack, positions, posbuf, needle_len);
 }

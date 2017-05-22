@@ -20,7 +20,8 @@ run_scoring(Candidate *haystack, ssize_t start, ssize_t count, char *needle, int
     int ret = 0;
     CacheItem ***cache = alloc_cache(needle_len, max_haystack_len);
     Stack *stack = alloc_stack(needle_len, max_haystack_len);
-    if (cache == NULL || stack == NULL) { REPORT_OOM; free(stack); free(cache); return 1; }
+    int32_t *posbuf = (int32_t*)calloc(needle_len, sizeof(int32_t));
+    if (cache == NULL || stack == NULL || posbuf == NULL) { REPORT_OOM; free(stack); free(cache); free(posbuf); return 1; }
 
     MatchInfo mi = {0};
 
@@ -33,11 +34,13 @@ run_scoring(Candidate *haystack, ssize_t start, ssize_t count, char *needle, int
         mi.level1 = level1;
         mi.level2 = level2;
         mi.level3 = level3;
-        haystack[i].score = score_item(&mi, haystack[i].positions, cache, stack, needle_len, max_haystack_len);
+        mi.cache = cache;
+        haystack[i].score = score_item(&mi, haystack[i].positions, stack, needle_len, max_haystack_len, posbuf);
     }
 
     stack = free_stack(stack);
     cache = free_cache(cache);
+    free(posbuf); posbuf = NULL;
     return ret;
 }
 
