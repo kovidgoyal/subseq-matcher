@@ -14,16 +14,17 @@
 #include <string.h>
 
 static int 
-read_stdin() {
+read_stdin(char *needle, char* level1, char* level2, char *level3) {
     char *linebuf = NULL;
     size_t n = 0;
     ssize_t sz = 0;
     int ret = 0;
 
     while (true) {
+        errno = 0;
         sz = getline(&linebuf, &n, stdin);
         if (sz < 1) {
-            if (!feof(stdin)) {
+            if (errno != 0) {
                 perror("Failed to read from STDIN with error:"); 
                 ret = 1;
             }
@@ -51,8 +52,7 @@ main(int argc, char *argv[]) {
         goto end;
     }
     needle = opts.inputs[0];
-    printf("limit: %d needle: %s\n", opts.limit_arg, needle);
-    ret = read_stdin();
+    ret = read_stdin(needle, opts.level1_arg, opts.level2_arg, opts.level3_arg);
 
 end:
     cmdline_parser_free(&opts);

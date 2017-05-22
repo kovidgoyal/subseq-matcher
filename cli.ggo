@@ -4,4 +4,13 @@ usage "subsequence-matcher [OPTIONS] query"
 description "Filter a newline separated list of strings from STDIN to STDOUT based on the query. Does subsequence matching and returns the results sorted by relevance."
 
 option "limit" l "Limit the number of returned results."
-	int typestr="number" default="0" optional
+	int default="0" optional
+
+option "level1" 1 "The level 1 delimiters."
+	string default="/" optional
+
+option "level2" 2 "The level 2 delimiters."
+	string default="-_ 0123456789" optional
+
+option "level3" 3 "The level 3 delimiters."
+	string default="." optional

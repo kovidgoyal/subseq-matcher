@@ -14,3 +14,5 @@ typedef struct {
     const char* src;
     ssize_t src_sz;
 } Candidate;
+
+typedef 
