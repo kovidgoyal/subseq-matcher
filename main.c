@@ -14,9 +14,34 @@
 #include <unistd.h>
 #include <string.h>
 
+typedef struct gengetopt_args_info args_info;
+
+static int 
+cmpscore(const void *a, const void *b) {
+    double sa = ((Candidate*)(a))->score, sb = ((Candidate*)(b))->score;
+    // Sort descending
+    return (sa > sb) ? -1 : ((sa == sb) ? 0 : 1);
+}
+
+
+static void
+output_result(Candidate *c, args_info *opts) {
+    printf("%s\n", c->src);
+}
+
+
+static void
+output_results(Candidate *haystack, size_t count, args_info *opts) {
+    qsort(haystack, count, sizeof(*haystack), cmpscore);
+    size_t left = opts->limit_arg > 0 ? opts->limit_arg : count;
+    for (size_t i = 0; i < left; i++) {
+        output_result(haystack + i, opts);
+    }
+}
+
 
 static int
-run_scoring(Candidate *haystack, ssize_t start, ssize_t count, char *needle, int32_t needle_len, int32_t max_haystack_len, char *level1, char *level2, char* level3) {
+run_scoring(Candidate *haystack, size_t start, size_t count, char *needle, int32_t needle_len, int32_t max_haystack_len, char *level1, char *level2, char* level3) {
     int ret = 0;
     CacheItem ***cache = alloc_cache(needle_len, max_haystack_len);
     Stack *stack = alloc_stack(needle_len, max_haystack_len);
@@ -25,7 +50,7 @@ run_scoring(Candidate *haystack, ssize_t start, ssize_t count, char *needle, int
 
     MatchInfo mi = {0};
 
-    for (ssize_t i = start; i < count; i++) {
+    for (size_t i = start; i < count; i++) {
         mi.haystack = haystack[i].src;
         mi.haystack_len = haystack[i].src_sz;
         mi.needle = needle;
@@ -46,7 +71,7 @@ run_scoring(Candidate *haystack, ssize_t start, ssize_t count, char *needle, int
 
 
 static int 
-read_stdin(char *needle, char* level1, char* level2, char *level3) {
+read_stdin(char *needle, args_info *opts) {
     char *linebuf = NULL;
     size_t n = 0, needle_len = strlen(needle), max_haystack_len = 0;
     ssize_t sz = 0;
@@ -90,7 +115,8 @@ read_stdin(char *needle, char* level1, char* level2, char *level3) {
 
     Candidate *haystack = &ITEM(candidates, 0);
 
-    ret = run_scoring(haystack, 0, SIZE(candidates), needle, needle_len, max_haystack_len, level1, level2, level3);
+    ret = run_scoring(haystack, 0, SIZE(candidates), needle, needle_len, max_haystack_len, opts->level1_arg, opts->level2_arg, opts->level3_arg);
+    output_results(haystack, SIZE(candidates), opts);
 
     if (linebuf) free(linebuf);
     linebuf = NULL;
@@ -101,7 +127,7 @@ read_stdin(char *needle, char* level1, char* level2, char *level3) {
 
 int 
 main(int argc, char *argv[]) {
-    struct gengetopt_args_info opts;
+    args_info opts;
     int ret = 0;
     char *needle = NULL;
 
@@ -112,7 +138,7 @@ main(int argc, char *argv[]) {
         goto end;
     }
     needle = opts.inputs[0];
-    ret = read_stdin(needle, opts.level1_arg, opts.level2_arg, opts.level3_arg);
+    ret = read_stdin(needle, &opts);
 
 end:
     cmdline_parser_free(&opts);
