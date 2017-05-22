@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+#include <stdio.h>
 
 CacheItem***
 alloc_cache(int32_t needle_len, int32_t max_haystack_len) {
@@ -151,7 +152,7 @@ process_item(MatchInfo *m, Stack *stack, int32_t *final_positions, int32_t *posi
                 if (pos == NULL) { score = 0.0; break; } // No matches found
                 distance = pos - (m->haystack + last_idx);
                 if (distance <= 1) score_for_char = m->max_score_per_char;
-                else score_for_char = calc_score_for_char(m, m->haystack[last_idx], *pos, distance);
+                else score_for_char = calc_score_for_char(m, *(pos - 1), *pos, distance);
                 hidx++;
                 if (m->haystack_len - hidx >= m->needle_len - nidx) stack_push(stack, hidx, nidx, last_idx, score, positions);
                 last_idx = pos - m->haystack; 
