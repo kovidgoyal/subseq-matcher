@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "vector.h"
 #include "cli.h"
 #include <errno.h>
 #include <stdio.h>
@@ -13,12 +14,23 @@
 #include <unistd.h>
 #include <string.h>
 
+
+
 static int 
 read_stdin(char *needle, char* level1, char* level2, char *level3) {
     char *linebuf = NULL;
-    size_t n = 0;
+    size_t n = 0, needle_len = strlen(needle), max_haystack_len = 0;
     ssize_t sz = 0;
     int ret = 0;
+    Positions positions = {0};
+    Candidates candidates = {0};
+    Chars chars = {0};
+
+    if (needle_len < 1) { fprintf(stderr, "Empty query not allowed.\n"); return 1; }
+    ALLOC_VEC(char, chars, 8192 * 20);
+    ALLOC_VEC(int32_t, positions, 8192 * needle_len * 2);
+    ALLOC_VEC(Candidate, candidates, 8192);
+    if (chars.data == NULL || positions.data == NULL || candidates.data == NULL) return 1;
 
     while (true) {
         errno = 0;
@@ -30,11 +42,33 @@ read_stdin(char *needle, char* level1, char* level2, char *level3) {
             }
             break;
         }
-        printf("%s", linebuf);
+        if (sz > 1) {
+            if (linebuf[sz - 1] == '\n') linebuf[--sz] = 0;
+            sz++;  // sz does not include the trailing null byte
+            if (sz > 0) {
+                max_haystack_len = MAX(max_haystack_len, sz);
+                ENSURE_SPACE(char, chars, sz);
+                ENSURE_SPACE(int32_t, positions, 2*needle_len);
+                ENSURE_SPACE(Candidate, candidates, 1);
+                memcpy(&NEXT(chars), linebuf, sz);
+                NEXT(candidates).src = &NEXT(chars);
+                NEXT(candidates).src_sz = sz - 1;
+                NEXT(candidates).positions = &NEXT(positions);
+                NEXT(candidates).needlebuf = (&NEXT(positions)) + needle_len;
+                INC(candidates, 1); INC(chars, sz); INC(positions, 2*needle_len);
+            }
+        }
+    }
+
+    Candidate *haystack = &ITEM(candidates, 0);
+
+    for (ssize_t i = 0; i < SIZE(candidates); i++) {
+        printf("%s\n", haystack[i].src);
     }
 
     if (linebuf) free(linebuf);
     linebuf = NULL;
+    FREE_VEC(chars); FREE_VEC(positions); FREE_VEC(candidates);
     return ret;
 }
 
