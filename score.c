@@ -7,6 +7,8 @@
 
 #include "data-types.h"
 #include <stdlib.h>
+#include <string.h>
+#include <float.h>
 
 CacheItem***
 alloc_cache(int32_t needle_len, int32_t max_haystack_len) {
@@ -74,4 +76,41 @@ free_stack(Stack *stack) {
     stack->items = NULL;
     free(stack);
     return NULL;
+}
+
+
+static inline void 
+clear_cache(CacheItem ***mem, int32_t needle_len, int32_t max_haystack_len) {
+    int32_t hidx, nidx, last_idx;
+    for (hidx = 0; hidx < max_haystack_len; hidx++) {
+        for (nidx = 0; nidx < needle_len; nidx++) {
+            for (last_idx = 0; last_idx < max_haystack_len; last_idx++) {
+                mem[hidx][nidx][last_idx].score = DBL_MAX;
+            }
+        }
+    }
+}
+
+static inline void 
+clear_stack(Stack *stack) { stack->pos = -1; }
+
+static inline void 
+stack_push(Stack *stack, int32_t hidx, int32_t nidx, int32_t last_idx, double score, int32_t *positions) {
+    StackItem *si = &(stack->items[++stack->pos]);
+    si->hidx = hidx; si->nidx = nidx; si->last_idx = last_idx; si->score = score;
+    memcpy(si->positions, positions, sizeof(*positions) * stack->needle_len);
+}
+
+static inline void 
+stack_pop(Stack *stack, int32_t *hidx, int32_t *nidx, int32_t *last_idx, double *score, int32_t *positions) {
+    StackItem *si = &(stack->items[stack->pos--]);
+    *hidx = si->hidx; *nidx = si->nidx; *last_idx = si->last_idx; *score = si->score;
+    memcpy(positions, si->positions, sizeof(*positions) * stack->needle_len);
+}
+
+double
+score_item(MatchInfo *mi, int32_t *positions, CacheItem ***cache, Stack *stack, int32_t needle_len, int32_t max_haystack_len) {
+    clear_stack(stack);
+    clear_cache(cache, needle_len, max_haystack_len);
+    return 0;
 }

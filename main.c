@@ -16,12 +16,25 @@
 
 
 static int
-run_scoring(Candidate *haystack, char *needle, int32_t needle_len, int32_t max_haystack_len) {
+run_scoring(Candidate *haystack, ssize_t start, ssize_t count, char *needle, int32_t needle_len, int32_t max_haystack_len, char *level1, char *level2, char* level3) {
     int ret = 0;
     CacheItem ***cache = alloc_cache(needle_len, max_haystack_len);
     Stack *stack = alloc_stack(needle_len, max_haystack_len);
     if (cache == NULL || stack == NULL) { REPORT_OOM; free(stack); free(cache); return 1; }
 
+    MatchInfo mi = {0};
+
+    for (ssize_t i = start; i < count; i++) {
+        mi.haystack = haystack[i].src;
+        mi.haystack_len = haystack[i].src_sz;
+        mi.needle = needle;
+        mi.needle_len = needle_len;
+        mi.max_score_per_char = (1.0 / mi.haystack_len + 1.0 / needle_len) / 2.0;
+        mi.level1 = level1;
+        mi.level2 = level2;
+        mi.level3 = level3;
+        haystack[i].score = score_item(&mi, haystack[i].positions, cache, stack, needle_len, max_haystack_len);
+    }
 
     stack = free_stack(stack);
     cache = free_cache(cache);
@@ -41,7 +54,7 @@ read_stdin(char *needle, char* level1, char* level2, char *level3) {
 
     if (needle_len < 1) { fprintf(stderr, "Empty query not allowed.\n"); return 1; }
     ALLOC_VEC(char, chars, 8192 * 20);
-    ALLOC_VEC(int32_t, positions, 8192 * needle_len * 2);
+    ALLOC_VEC(int32_t, positions, 8192 * needle_len);
     ALLOC_VEC(Candidate, candidates, 8192);
     if (chars.data == NULL || positions.data == NULL || candidates.data == NULL) return 1;
 
@@ -61,21 +74,20 @@ read_stdin(char *needle, char* level1, char* level2, char *level3) {
             if (sz > 0) {
                 max_haystack_len = MAX(max_haystack_len, sz);
                 ENSURE_SPACE(char, chars, sz);
-                ENSURE_SPACE(int32_t, positions, 2*needle_len);
+                ENSURE_SPACE(int32_t, positions, needle_len);
                 ENSURE_SPACE(Candidate, candidates, 1);
                 memcpy(&NEXT(chars), linebuf, sz);
                 NEXT(candidates).src = &NEXT(chars);
                 NEXT(candidates).src_sz = sz - 1;
                 NEXT(candidates).positions = &NEXT(positions);
-                NEXT(candidates).needlebuf = (&NEXT(positions)) + needle_len;
-                INC(candidates, 1); INC(chars, sz); INC(positions, 2*needle_len);
+                INC(candidates, 1); INC(chars, sz); INC(positions, needle_len);
             }
         }
     }
 
     Candidate *haystack = &ITEM(candidates, 0);
 
-    ret = run_scoring(haystack, needle, needle_len, max_haystack_len);
+    ret = run_scoring(haystack, 0, SIZE(candidates), needle, needle_len, max_haystack_len, level1, level2, level3);
 
     if (linebuf) free(linebuf);
     linebuf = NULL;

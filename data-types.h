@@ -16,7 +16,7 @@
 typedef struct {
     char* src;
     ssize_t src_sz;
-    int32_t *positions, *needlebuf;
+    int32_t *positions;
     double score;
 } Candidate;
 
@@ -47,7 +47,22 @@ typedef struct {
 } Stack;
 
 
+typedef struct {
+    char *haystack;
+    int32_t haystack_len;
+    char *needle;
+    int32_t needle_len;
+    double max_score_per_char;
+    CacheItem ***cache;
+    char *level1;
+    char *level2;
+    char *level3;
+} MatchInfo;
+
+
+
 Stack* alloc_stack(int32_t needle_len, int32_t max_haystack_len);
 Stack* free_stack(Stack *stack);
 CacheItem*** alloc_cache(int32_t needle_len, int32_t max_haystack_len);
 CacheItem*** free_cache(CacheItem ***);
+double score_item(MatchInfo *mi, int32_t *positions, CacheItem ***cache, Stack *stack, int32_t, int32_t);
