@@ -46,11 +46,13 @@ unescape(char *src, char *dest, size_t destlen) {
 }
 
 
+#define FIELD(x, which) (((Candidate*)(x))->which)
+
 static int 
 cmpscore(const void *a, const void *b) {
-    double sa = ((Candidate*)(a))->score, sb = ((Candidate*)(b))->score;
+    double sa = FIELD(a, score), sb = FIELD(b, score);
     // Sort descending
-    return (sa > sb) ? -1 : ((sa == sb) ? 0 : 1);
+    return (sa > sb) ? -1 : ((sa == sb) ? (FIELD(a, idx) - FIELD(b, idx)) : 1);
 }
 
 static void
@@ -118,7 +120,7 @@ run_scoring(Candidate *haystack, size_t start, size_t count, char *needle, int32
 static int 
 read_stdin(char *needle, args_info *opts) {
     char *linebuf = NULL;
-    size_t n = 0, needle_len = strlen(needle), max_haystack_len = 0;
+    size_t n = 0, needle_len = strlen(needle), max_haystack_len = 0, idx = 0;
     ssize_t sz = 0;
     int ret = 0;
     Positions positions = {0};
@@ -153,6 +155,7 @@ read_stdin(char *needle, args_info *opts) {
                 NEXT(candidates).src = &NEXT(chars);
                 NEXT(candidates).src_sz = sz - 1;
                 NEXT(candidates).positions = &NEXT(positions);
+                NEXT(candidates).idx = idx++;
                 INC(candidates, 1); INC(chars, sz); INC(positions, needle_len);
             }
         }
