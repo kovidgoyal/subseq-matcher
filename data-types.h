@@ -12,60 +12,28 @@
 #include <stdbool.h>
 
 #include "vector.h"
+#include "cli.h"
+
+typedef struct gengetopt_args_info args_info;
+
+typedef uint8_t len_t;
+#define LEN_MAX UINT8_MAX
 
 typedef struct {
     char* src;
     ssize_t src_sz;
-    size_t haystack_len;
-    int32_t *positions;
+    len_t haystack_len;
+    len_t *positions;
     double score;
     ssize_t idx;
 } Candidate;
 
-VECTOR_OF(int32_t, Positions);
+VECTOR_OF(len_t, Positions);
 VECTOR_OF(char, Chars);
 VECTOR_OF(Candidate, Candidates);
 
 
-typedef struct {
-    double score;
-    int32_t *positions;
-} CacheItem;
-
-
-typedef struct {
-    size_t hidx;
-    size_t nidx;
-    size_t last_idx;
-    double score;
-    int32_t *positions;
-} StackItem;
-
-typedef struct {
-    ssize_t pos;
-    int32_t needle_len;
-    size_t size;
-    StackItem *items;
-    int32_t *positions;
-} Stack;
-
-
-typedef struct {
-    char *haystack;
-    int32_t haystack_len;
-    char *needle;
-    int32_t needle_len;
-    double max_score_per_char;
-    CacheItem ***cache;
-    char *level1;
-    char *level2;
-    char *level3;
-} MatchInfo;
-
-
-
-Stack* alloc_stack(int32_t needle_len, int32_t max_haystack_len);
-Stack* free_stack(Stack *stack);
-CacheItem*** alloc_cache(int32_t needle_len, int32_t max_haystack_len);
-CacheItem*** free_cache(CacheItem ***);
-double score_item(MatchInfo *mi, int32_t *positions, Stack *stack, int32_t, int32_t, int32_t*);
+void output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_len);
+void* alloc_workspace(len_t max_haystack_len, len_t needle_len, char *needle, char *level1, char *level2, char *level3);
+void* free_workspace(void *v);
+double score_item(void *v, char *haystack, len_t haystack_len, len_t *match_positions);
