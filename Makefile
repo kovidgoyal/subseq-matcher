@@ -5,7 +5,7 @@
 
 BUILD=build
 EXE=$(BUILD)/subseq-matcher
-CCFLAGS=$(CFLAGS) -std=c99 -I./$(BUILD) -I. -Wall -Werror -O3
+CCFLAGS=$(CFLAGS) -pthread -std=c99 -I./$(BUILD) -I. -Wall -Werror -O3
 CLI=cli
 SOURCES=$(wildcard *.c)
 HEADERS=$(wildcard *.h)
@@ -35,7 +35,7 @@ show-help: $(CLI).ggo
 	gengetopt -i $(CLI).ggo --show-help 
 
 $(EXE): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $(EXE)
+	$(CC) $(CCFLAGS) $(OBJECTS) -o $(EXE)
 
 clean:
 	rm -rf $(BUILD)

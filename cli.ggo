@@ -31,3 +31,6 @@ option "mark-before" b "String to output before each matched character"
 
 option "mark-after" a "String to output after each matched character"
     string optional
+
+option "threads" t "Number of worker threads to use. Default is to use the number of available CPUs"
+    int default="0" optional
