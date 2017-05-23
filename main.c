@@ -54,8 +54,10 @@ create_job(size_t i, size_t blocksz) {
     else ans->count = global.haystack_count - ans->start;
     ans->max_haystack_len = 0;
     for (size_t i = ans->start; i < ans->start + global.haystack_count; i++) ans->max_haystack_len = MAX(ans->max_haystack_len, global.haystack[i].haystack_len);
-    ans->workspace = alloc_workspace(ans->max_haystack_len, global.needle_len, global.needle, global.level1, global.level2, global.level3);
-    if (!ans->workspace) { free(ans); return NULL; }
+    if (ans->count > 0) {
+        ans->workspace = alloc_workspace(ans->max_haystack_len, global.needle_len, global.needle, global.level1, global.level2, global.level3);
+        if (!ans->workspace) { free(ans); return NULL; }
+    }
     return ans;
 }
 
