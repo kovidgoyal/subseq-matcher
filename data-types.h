@@ -45,6 +45,7 @@ typedef struct {
     int32_t needle_len;
     size_t size;
     StackItem *items;
+    int32_t *positions;
 } Stack;
 
 
