@@ -79,10 +79,12 @@ output_result(Candidate *c, args_info *opts, int32_t needle_len) {
 
 static void
 output_results(Candidate *haystack, size_t count, args_info *opts, int32_t needle_len) {
+    Candidate *c;
     qsort(haystack, count, sizeof(*haystack), cmpscore);
     size_t left = opts->limit_arg > 0 ? opts->limit_arg : count;
     for (size_t i = 0; i < left; i++) {
-        output_result(haystack + i, opts, needle_len);
+        c = haystack + i;
+        if (c->score > 0) output_result(c, opts, needle_len);
     }
 }
 
