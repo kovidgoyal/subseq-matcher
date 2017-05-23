@@ -50,7 +50,6 @@ free_cache(CacheItem*** c) { if (c) free(c); return NULL; }
 
 Stack* 
 alloc_stack(int32_t needle_len, int32_t max_haystack_len) {
-    StackItem *items = NULL;
     size_t num = max_haystack_len * needle_len + 1;
     int32_t *positions;
     Stack *stack = (Stack*)calloc(1, sizeof(Stack));
@@ -59,10 +58,10 @@ alloc_stack(int32_t needle_len, int32_t max_haystack_len) {
     stack->needle_len = needle_len;
     stack->pos = -1;
     stack->size = num;
-    items = (StackItem*) calloc(num, sizeof(StackItem));
+    stack->items = (StackItem*) calloc(num, sizeof(StackItem));
     positions = (int32_t*) calloc(num, needle_len * sizeof(int32_t));
-    if (items == NULL || positions == NULL) { free(items); free(positions); free(stack); return NULL; }
-    for (size_t i = 0; i < num; i++) items[i].positions = positions + (i * needle_len);
+    if (stack->items == NULL || positions == NULL) { free(stack->items); free(positions); free(stack); return NULL; }
+    for (size_t i = 0; i < num; i++) stack->items[i].positions = positions + (i * needle_len);
     return stack;
 }
 
