@@ -16,6 +16,7 @@
 typedef struct {
     char* src;
     ssize_t src_sz;
+    size_t haystack_len;
     int32_t *positions;
     double score;
     ssize_t idx;

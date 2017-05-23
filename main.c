@@ -88,18 +88,22 @@ output_results(Candidate *haystack, size_t count, args_info *opts, int32_t needl
 
 
 static int
-run_scoring(Candidate *haystack, size_t start, size_t count, char *needle, int32_t needle_len, int32_t max_haystack_len, char *level1, char *level2, char* level3) {
+run_scoring(Candidate *haystack, size_t start, size_t count, char *needle, int32_t needle_len, char *level1, char *level2, char* level3) {
     int ret = 0;
-    CacheItem ***cache = alloc_cache(needle_len, max_haystack_len);
-    Stack *stack = alloc_stack(needle_len, max_haystack_len);
-    int32_t *posbuf = (int32_t*)calloc(needle_len, sizeof(int32_t));
+    int32_t *posbuf = NULL, max_haystack_len = 0;
+    CacheItem ***cache = NULL;
+    Stack *stack = NULL;
+    for (size_t i = start; i < count; i++) max_haystack_len = MAX(max_haystack_len, haystack[i].haystack_len);
+    cache = alloc_cache(needle_len, max_haystack_len);
+    stack = alloc_stack(needle_len, max_haystack_len);
+    posbuf = (int32_t*)calloc(needle_len, sizeof(int32_t));
     if (cache == NULL || stack == NULL || posbuf == NULL) { REPORT_OOM; free(stack); free(cache); free(posbuf); return 1; }
 
     MatchInfo mi = {0};
 
     for (size_t i = start; i < count; i++) {
         mi.haystack = haystack[i].src;
-        mi.haystack_len = haystack[i].src_sz;
+        mi.haystack_len = haystack[i].haystack_len;
         mi.needle = needle;
         mi.needle_len = needle_len;
         mi.max_score_per_char = (1.0 / mi.haystack_len + 1.0 / needle_len) / 2.0;
@@ -120,7 +124,7 @@ run_scoring(Candidate *haystack, size_t start, size_t count, char *needle, int32
 static int 
 read_stdin(char *needle, args_info *opts) {
     char *linebuf = NULL;
-    size_t n = 0, needle_len = strlen(needle), max_haystack_len = 0, idx = 0;
+    size_t n = 0, needle_len = strlen(needle), idx = 0;
     ssize_t sz = 0;
     int ret = 0;
     Candidates candidates = {0};
@@ -145,11 +149,11 @@ read_stdin(char *needle, args_info *opts) {
             if (linebuf[sz - 1] == '\n') linebuf[--sz] = 0;
             sz++;  // sz does not include the trailing null byte
             if (sz > 0) {
-                max_haystack_len = MAX(max_haystack_len, sz);
                 ENSURE_SPACE(char, chars, sz);
                 ENSURE_SPACE(Candidate, candidates, 1);
                 memcpy(&NEXT(chars), linebuf, sz);
-                NEXT(candidates).src_sz = sz - 1;
+                NEXT(candidates).src_sz = sz;
+                NEXT(candidates).haystack_len = sz - 1;
                 NEXT(candidates).idx = idx++;
                 INC(candidates, 1); INC(chars, sz); 
             }
@@ -163,9 +167,9 @@ read_stdin(char *needle, args_info *opts) {
         for (size_t i = 0, off = 0; i < SIZE(candidates); i++) {
             haystack[i].positions = positions + (i * needle_len);
             haystack[i].src = cdata + off;
-            off += haystack[i].src_sz + 1;
+            off += haystack[i].src_sz;
         }
-        ret = run_scoring(haystack, 0, SIZE(candidates), needle, needle_len, max_haystack_len, opts->level1_arg, opts->level2_arg, opts->level3_arg);
+        ret = run_scoring(haystack, 0, SIZE(candidates), needle, needle_len, opts->level1_arg, opts->level2_arg, opts->level3_arg);
         output_results(haystack, SIZE(candidates), opts, needle_len);
     } else {
         ret = 1; REPORT_OOM;
