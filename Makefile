@@ -29,7 +29,7 @@ $(BUILD)/cli.o: $(BUILD)/cli.c
 
 $(BUILD)/$(CLI).c: $(CLI).ggo
 	mkdir -p build
-	gengetopt -i $(CLI).ggo -F $(BUILD)/$(CLI) -u --default-optional
+	gengetopt -i $(CLI).ggo -F $(BUILD)/$(CLI) -u --default-optional -G
 
 show-help: $(CLI).ggo
 	gengetopt -i $(CLI).ggo --show-help --default-optional
