@@ -25,7 +25,7 @@ typedef struct {
 typedef struct {
     Candidate *haystack;
     size_t haystack_count;
-    char *level1, *level2, *level3, *needle;
+    text_t *level1, *level2, *level3, *needle;
     len_t needle_len;
 } GlobalData;
 
@@ -116,7 +116,7 @@ end:
 }
 
 static int 
-read_stdin(char *needle, args_info *opts) {
+read_stdin(text_t *needle, args_info *opts) {
     char *linebuf = NULL;
     size_t n = 0, idx = 0;
     len_t needle_len = strlen(needle);
@@ -126,7 +126,7 @@ read_stdin(char *needle, args_info *opts) {
     Chars chars = {0};
 
     if (needle_len < 1) { fprintf(stderr, "Empty query not allowed.\n"); return 1; }
-    ALLOC_VEC(char, chars, 8192 * 20);
+    ALLOC_VEC(text_t, chars, 8192 * 20);
     ALLOC_VEC(Candidate, candidates, 8192);
     if (chars.data == NULL || candidates.data == NULL) return 1;
 
@@ -144,7 +144,7 @@ read_stdin(char *needle, args_info *opts) {
             if (linebuf[sz - 1] == '\n') linebuf[--sz] = 0;
             sz++;  // sz does not include the trailing null byte
             if (sz > 0) {
-                ENSURE_SPACE(char, chars, sz);
+                ENSURE_SPACE(text_t, chars, sz);
                 ENSURE_SPACE(Candidate, candidates, 1);
                 memcpy(&NEXT(chars), linebuf, sz);
                 NEXT(candidates).src_sz = sz;
@@ -160,7 +160,7 @@ read_stdin(char *needle, args_info *opts) {
     Candidate *haystack = &ITEM(candidates, 0);
     len_t *positions = (len_t*)calloc(SIZE(candidates), sizeof(len_t) * needle_len);
     if (positions) {
-        char *cdata = &ITEM(chars, 0);
+        text_t *cdata = &ITEM(chars, 0);
         for (size_t i = 0, off = 0; i < SIZE(candidates); i++) {
             haystack[i].positions = positions + (i * needle_len);
             haystack[i].src = cdata + off;

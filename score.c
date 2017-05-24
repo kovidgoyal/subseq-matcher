@@ -21,13 +21,13 @@ typedef struct {
     len_t *address; // Array of offsets into the positions array
     double max_score_per_char;
     uint8_t *level_factors;  // Array of score factors for every character in the current haystack that matches a character in the needle
-    char *level1, *level2, *level3;  // The characters in the levels
-    char *needle;  // The current needle
-    char *haystack; //The current haystack
+    text_t *level1, *level2, *level3;  // The characters in the levels
+    text_t *needle;  // The current needle
+    text_t *haystack; //The current haystack
 } WorkSpace;
 
 void*
-alloc_workspace(len_t max_haystack_len, len_t needle_len, char *needle, char *level1, char *level2, char *level3) {
+alloc_workspace(len_t max_haystack_len, len_t needle_len, text_t *needle, text_t *level1, text_t *level2, text_t *level3) {
     WorkSpace *ans = calloc(1, sizeof(WorkSpace));
     if (ans == NULL) return NULL;
     ans->positions_buf = (len_t*) calloc(needle_len, sizeof(len_t) * max_haystack_len);
@@ -59,7 +59,7 @@ free_workspace(void *v) {
 
 
 static inline uint8_t
-level_factor_for(char current, char last, WorkSpace *w) {
+level_factor_for(text_t current, text_t last, WorkSpace *w) {
     if (strchr(w->level1, last) != NULL) return 90;
     if (strchr(w->level2, last) != NULL) return 80;
     if ('a' <= last && last <= 'z' && 'A' <= current && current <= 'Z') return 80; // CamelCase
@@ -68,7 +68,7 @@ level_factor_for(char current, char last, WorkSpace *w) {
 }
 
 static void
-init_workspace(WorkSpace *w, char *haystack, len_t haystack_len) {
+init_workspace(WorkSpace *w, text_t *haystack, len_t haystack_len) {
     // Calculate the positions and level_factors arrays for the specified haystack
     bool level_factor_calculated = false;
     memset(w->positions_count, 0, sizeof(*(w->positions_count)) * 2 * w->needle_len);
@@ -157,7 +157,7 @@ process_item(WorkSpace *w, len_t *match_positions) {
 }
 
 double
-score_item(void *v, char *haystack, len_t haystack_len, len_t *match_positions) {
+score_item(void *v, text_t *haystack, len_t haystack_len, len_t *match_positions) {
     WorkSpace *w = (WorkSpace*)v;
     init_workspace(w, haystack, haystack_len);
     if (!has_atleast_one_match(w)) return 0;

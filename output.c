@@ -10,12 +10,12 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-static char mark_before[100] = {0}, mark_after[100] = {0};
+static text_t mark_before[100] = {0}, mark_after[100] = {0};
 
 static void
-unescape(char *src, char *dest, size_t destlen) {
+unescape(text_t *src, text_t *dest, size_t destlen) {
     size_t srclen = strlen(src);
-    char buf[5] = {0};
+    text_t buf[5] = {0};
 
     for (size_t i = 0, j = 0; i < MIN(srclen, destlen); i++, j++) {
         if (src[i] == '\\' && i < srclen - 1) {
@@ -27,7 +27,7 @@ unescape(char *src, char *dest, size_t destlen) {
                 case 'x':
                     if (i + 1 < srclen && isxdigit(src[i]) && isxdigit(src[i+1])) {
                         buf[0] = src[i]; buf[1] = src[i+1]; buf[2] = 0;
-                        dest[j] = (unsigned char)(strtol(buf, NULL, 16));
+                        dest[j] = (text_t)(strtol(buf, NULL, 16));
                         i += 2;
                         break;
                     } 
@@ -50,7 +50,7 @@ cmpscore(const void *a, const void *b) {
 }
 
 static void
-output_with_marks(char *src, len_t *positions, len_t poslen) {
+output_with_marks(text_t *src, len_t *positions, len_t poslen) {
     unsigned int i, pos, j = 0;
     size_t l = strlen(src);
     for (pos = 0; pos < poslen; pos++, j++) {
