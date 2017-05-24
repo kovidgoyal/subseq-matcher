@@ -18,6 +18,7 @@ typedef struct gengetopt_args_info args_info;
 
 typedef uint8_t len_t;
 #define LEN_MAX UINT8_MAX
+#define UNUSED(x) (void)(x)
 
 typedef struct {
     char* src;
@@ -28,9 +29,9 @@ typedef struct {
     ssize_t idx;
 } Candidate;
 
-VECTOR_OF(len_t, Positions);
-VECTOR_OF(char, Chars);
-VECTOR_OF(Candidate, Candidates);
+VECTOR_OF(len_t, Positions)
+VECTOR_OF(char, Chars)
+VECTOR_OF(Candidate, Candidates)
 
 
 void output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_len);

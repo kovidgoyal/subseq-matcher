@@ -51,7 +51,7 @@ cmpscore(const void *a, const void *b) {
 
 static void
 output_with_marks(char *src, len_t *positions, len_t poslen) {
-    int i, pos, j = 0;
+    unsigned int i, pos, j = 0;
     size_t l = strlen(src);
     for (pos = 0; pos < poslen; pos++, j++) {
         for (i = j; i < MIN(l, positions[pos]); i++) printf("%c", src[i]);
@@ -65,6 +65,7 @@ output_with_marks(char *src, len_t *positions, len_t poslen) {
 
 static void
 output_result(Candidate *c, args_info *opts, len_t needle_len) {
+    UNUSED(opts);
     if (c->score > 0.0 && (mark_before[0] || mark_after[0])) {
         output_with_marks(c->src, c->positions, needle_len);
     } else printf("%s\n", c->src);
@@ -75,7 +76,7 @@ void
 output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_len) {
     Candidate *c;
     qsort(haystack, count, sizeof(*haystack), cmpscore);
-    size_t left = opts->limit_arg > 0 ? opts->limit_arg : count;
+    size_t left = opts->limit_arg > 0 ? (size_t)opts->limit_arg : count;
     if (opts->mark_before_arg) unescape(opts->mark_before_arg, mark_before, sizeof(mark_before) - 1);
     if (opts->mark_after_arg) unescape(opts->mark_after_arg, mark_after, sizeof(mark_before) - 1);
     for (size_t i = 0; i < left; i++) {

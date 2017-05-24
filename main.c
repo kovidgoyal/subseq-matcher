@@ -69,10 +69,10 @@ free_job(JobData *job) {
 }
 
 static int
-run_threaded(int num_threads) {
+run_threaded(int num_threads_asked) {
     int ret = 0, rc;
     size_t i, blocksz;
-    num_threads = MAX(1, num_threads || sysconf(_SC_NPROCESSORS_ONLN));
+    size_t num_threads = MAX(1, num_threads_asked || sysconf(_SC_NPROCESSORS_ONLN));
     if (global.haystack_count < 100) num_threads = 1;
 
     pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
