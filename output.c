@@ -9,15 +9,18 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 
-static text_t mark_before[100] = {0}, mark_after[100] = {0};
+static char mark_before[100] = {0}, mark_after[100] = {0};
+static size_t mark_before_sz = 0, mark_after_sz = 0;
 
-static void
-unescape(text_t *src, text_t *dest, size_t destlen) {
-    size_t srclen = strlen(src);
-    text_t buf[5] = {0};
+static size_t
+unescape(char *src, char *dest, size_t destlen) {
+    size_t srclen = strlen(src), i, j;
+    char buf[5] = {0};
 
-    for (size_t i = 0, j = 0; i < MIN(srclen, destlen); i++, j++) {
+    for (i = 0, j = 0; i < MIN(srclen, destlen); i++, j++) {
         if (src[i] == '\\' && i < srclen - 1) {
             switch(src[++i]) {
 #define S(x) dest[j] = x; break;
@@ -37,6 +40,7 @@ unescape(text_t *src, text_t *dest, size_t destlen) {
 #undef S
         } else dest[j] = src[i];
     }
+    return j;
 }
 
 
@@ -49,26 +53,74 @@ cmpscore(const void *a, const void *b) {
     return (sa > sb) ? -1 : ((sa == sb) ? (FIELD(a, idx) - FIELD(b, idx)) : 1);
 }
 
+#define BUF_CAPACITY 16384
+static char write_buf[BUF_CAPACITY] = {0};
+static size_t write_buf_sz = 0;
+
 static void
-output_with_marks(text_t *src, len_t *positions, len_t poslen) {
-    unsigned int i, pos, j = 0;
-    size_t l = strlen(src);
-    for (pos = 0; pos < poslen; pos++, j++) {
-        for (i = j; i < MIN(l, positions[pos]); i++) printf("%c", src[i]);
-        j = positions[pos];
-        if (j < l) printf("%s%c%s", mark_before, src[j], mark_after);
+eintr_write() {
+    int ret;
+    char *buf = write_buf;
+    while (write_buf_sz > 0) {
+        errno = 0;
+        ret = write(STDOUT_FILENO, buf, write_buf_sz);
+        if (ret <= 0) {
+            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) continue;
+            perror("Could not write to output"); exit(1); 
+        }
+        buf += ret;
+        write_buf_sz -= ret;
     }
-    for (i = positions[poslen-1] + 1; i < l; i++) printf("%c", src[i]);
-    printf("\n");
+}
+
+
+static void
+buffered_write(const char *buf, size_t sz) {
+    if (sz + write_buf_sz < BUF_CAPACITY) {
+        memcpy(write_buf + write_buf_sz, buf, sz);
+        write_buf_sz += sz;
+    } else {
+        eintr_write();
+        if (sz > BUF_CAPACITY) { fprintf(stderr, "Cannot write in large chunk sizes\n"); exit(1); }
+        buffered_write(buf, sz);
+    }
+}
+
+static void
+write_text(text_t *text, size_t sz) {
+    static char buf[10] = {0};
+    for (size_t i = 0; i < sz; i++) {
+        unsigned int num = encode_codepoint(text[i], buf);
+        if (num > 0) buffered_write(buf, num);
+    }
+}
+
+static void
+output_with_marks(text_t *src, size_t src_sz, len_t *positions, len_t poslen) {
+    size_t pos, i = 0;
+    for (pos = 0; pos < poslen; pos++, i++) {
+        write_text(src + i, MIN(src_sz, positions[pos]) - i);
+        i = positions[pos];
+        if (i < src_sz) {
+            if (mark_before_sz > 0) buffered_write(mark_before, mark_before_sz);
+            write_text(src + i, 1);
+            if (mark_after_sz > 0) buffered_write(mark_after, mark_after_sz);
+        }
+    }
+    i = positions[poslen - 1];
+    if (i + 1 < src_sz) write_text(src + i + 1, src_sz - i - 1);
 }
 
 
 static void
 output_result(Candidate *c, args_info *opts, len_t needle_len) {
     UNUSED(opts);
-    if (c->score > 0.0 && (mark_before[0] || mark_after[0])) {
-        output_with_marks(c->src, c->positions, needle_len);
-    } else printf("%s\n", c->src);
+    if (mark_before_sz > 0 || mark_after_sz > 0) {
+        output_with_marks(c->src, c->src_sz, c->positions, needle_len);
+    } else {
+        write_text(c->src, c->src_sz);
+    }
+    buffered_write("\n", 1);
 }
 
 
@@ -77,13 +129,11 @@ output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_
     Candidate *c;
     qsort(haystack, count, sizeof(*haystack), cmpscore);
     size_t left = opts->limit_arg > 0 ? (size_t)opts->limit_arg : count;
-    if (opts->mark_before_arg) unescape(opts->mark_before_arg, mark_before, sizeof(mark_before) - 1);
-    if (opts->mark_after_arg) unescape(opts->mark_after_arg, mark_after, sizeof(mark_before) - 1);
+    if (opts->mark_before_arg) mark_before_sz = unescape(opts->mark_before_arg, mark_before, sizeof(mark_before) - 1);
+    if (opts->mark_after_arg) mark_after_sz = unescape(opts->mark_after_arg, mark_after, sizeof(mark_before) - 1);
     for (size_t i = 0; i < left; i++) {
         c = haystack + i;
         if (c->score > 0) output_result(c, opts, needle_len);
     }
+    if (write_buf_sz > 0) eintr_write();
 }
-
-
-

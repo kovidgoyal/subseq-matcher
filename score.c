@@ -22,25 +22,27 @@ typedef struct {
     double max_score_per_char;
     uint8_t *level_factors;  // Array of score factors for every character in the current haystack that matches a character in the needle
     text_t *level1, *level2, *level3;  // The characters in the levels
+    len_t level1_len, level2_len, level3_len;
     text_t *needle;  // The current needle
     text_t *haystack; //The current haystack
 } WorkSpace;
 
 void*
-alloc_workspace(len_t max_haystack_len, len_t needle_len, text_t *needle, text_t *level1, text_t *level2, text_t *level3) {
+alloc_workspace(len_t max_haystack_len, GlobalData *global) {
     WorkSpace *ans = calloc(1, sizeof(WorkSpace));
     if (ans == NULL) return NULL;
-    ans->positions_buf = (len_t*) calloc(needle_len, sizeof(len_t) * max_haystack_len);
-    ans->positions = (len_t**)calloc(needle_len, sizeof(len_t*));
-    ans->positions_count = (len_t*)calloc(2*needle_len, sizeof(len_t));
+    ans->positions_buf = (len_t*) calloc(global->needle_len, sizeof(len_t) * max_haystack_len);
+    ans->positions = (len_t**)calloc(global->needle_len, sizeof(len_t*));
+    ans->positions_count = (len_t*)calloc(2*global->needle_len, sizeof(len_t));
     ans->level_factors = (uint8_t*)calloc(max_haystack_len, sizeof(uint8_t));
     if (ans->positions == NULL || ans->positions_buf == NULL || ans->positions_count == NULL || ans->level_factors == NULL) { free_workspace(ans); return NULL; }
-    ans->needle = needle;
-    ans->needle_len = needle_len;
+    ans->needle = global->needle;
+    ans->needle_len = global->needle_len;
     ans->max_haystack_len = max_haystack_len;
-    ans->level1 = level1; ans->level2 = level2; ans->level3 = level3;
-    ans->address = ans->positions_count + sizeof(len_t) * needle_len;
-    for (len_t i = 0; i < needle_len; i++) ans->positions[i] = ans->positions_buf + i * max_haystack_len;
+    ans->level1 = global->level1; ans->level2 = global->level2; ans->level3 = global->level3;
+    ans->level1_len = global->level1_len; ans->level2_len = global->level2_len; ans->level3_len = global->level3_len; 
+    ans->address = ans->positions_count + sizeof(len_t) * global->needle_len;
+    for (len_t i = 0; i < global->needle_len; i++) ans->positions[i] = ans->positions_buf + i * max_haystack_len;
     return ans;
 }
 
@@ -57,13 +59,20 @@ free_workspace(void *v) {
     return NULL;
 }
 
+static inline bool 
+has_char(text_t *text, len_t sz, text_t ch) {
+    for(len_t i = 0; i < sz; i++) {
+        if(text[sz] == ch) return true;
+    }
+    return false;
+}
 
 static inline uint8_t
 level_factor_for(text_t current, text_t last, WorkSpace *w) {
-    if (strchr(w->level1, last) != NULL) return 90;
-    if (strchr(w->level2, last) != NULL) return 80;
+    if (has_char(w->level1, w->level1_len, last)) return 90;
+    if (has_char(w->level2, w->level2_len, last)) return 80;
     if ('a' <= last && last <= 'z' && 'A' <= current && current <= 'Z') return 80; // CamelCase
-    if (strchr(w->level3, last) != NULL) return 70;
+    if (has_char(w->level3, w->level3_len, last)) return 70;
     return 0;
 }
 

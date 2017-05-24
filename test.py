@@ -62,6 +62,7 @@ class TestMatcher(unittest.TestCase):
         ' Non matching entries must be removed '
         self.basic_test('test\nxyz', 'te', 'test')
         self.basic_test('abc\nxyz', 'ba', '')
+        self.basic_test('abc\n123', 'abc', 'abc')
 
     def test_marking(self):
         ' Marking of matched characters '

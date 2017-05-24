@@ -22,14 +22,6 @@ typedef struct {
 } JobData;
 
 
-typedef struct {
-    Candidate *haystack;
-    size_t haystack_count;
-    text_t *level1, *level2, *level3, *needle;
-    len_t needle_len;
-    size_t haystack_size;
-} GlobalData;
-
 static GlobalData global = {0};
 
 static void 
@@ -56,7 +48,7 @@ create_job(size_t i, size_t blocksz) {
     ans->max_haystack_len = 0;
     for (size_t i = ans->start; i < ans->start + ans->count; i++) ans->max_haystack_len = MAX(ans->max_haystack_len, global.haystack[i].haystack_len);
     if (ans->count > 0) {
-        ans->workspace = alloc_workspace(ans->max_haystack_len, global.needle_len, global.needle, global.level1, global.level2, global.level3);
+        ans->workspace = alloc_workspace(ans->max_haystack_len, &global);
         if (!ans->workspace) { free(ans); return NULL; }
     }
     return ans;
@@ -117,16 +109,14 @@ end:
 }
 
 static int 
-read_stdin(text_t *needle, args_info *opts) {
+read_stdin(args_info *opts) {
     char *linebuf = NULL;
     size_t n = 0, idx = 0;
-    len_t needle_len = strlen(needle);
     ssize_t sz = 0;
     int ret = 0;
     Candidates candidates = {0};
     Chars chars = {0};
 
-    if (needle_len < 1) { fprintf(stderr, "Empty query not allowed.\n"); return 1; }
     ALLOC_VEC(text_t, chars, 8192 * 20);
     ALLOC_VEC(Candidate, candidates, 8192);
     if (chars.data == NULL || candidates.data == NULL) return 1;
@@ -143,13 +133,12 @@ read_stdin(text_t *needle, args_info *opts) {
         }
         if (sz > 1) {
             if (linebuf[sz - 1] == '\n') linebuf[--sz] = 0;
-            sz++;  // sz does not include the trailing null byte
             if (sz > 0) {
                 ENSURE_SPACE(text_t, chars, sz);
                 ENSURE_SPACE(Candidate, candidates, 1);
-                memcpy(&NEXT(chars), linebuf, sz);
+                sz = decode_string(linebuf, sz, &(NEXT(chars)));
                 NEXT(candidates).src_sz = sz;
-                NEXT(candidates).haystack_len = MIN(LEN_MAX, sz - 1);
+                NEXT(candidates).haystack_len = MIN(LEN_MAX, sz);
                 global.haystack_size += NEXT(candidates).haystack_len;
                 NEXT(candidates).idx = idx++;
                 INC(candidates, 1); INC(chars, sz); 
@@ -160,20 +149,18 @@ read_stdin(text_t *needle, args_info *opts) {
     // Prepare the haystack allocating space for positions arrays and settings
     // up the src pointers to point to the correct locations
     Candidate *haystack = &ITEM(candidates, 0);
-    len_t *positions = (len_t*)calloc(SIZE(candidates), sizeof(len_t) * needle_len);
+    len_t *positions = (len_t*)calloc(SIZE(candidates), sizeof(len_t) * global.needle_len);
     if (positions) {
         text_t *cdata = &ITEM(chars, 0);
         for (size_t i = 0, off = 0; i < SIZE(candidates); i++) {
-            haystack[i].positions = positions + (i * needle_len);
+            haystack[i].positions = positions + (i * global.needle_len);
             haystack[i].src = cdata + off;
             off += haystack[i].src_sz;
         }
-        global.needle = needle; global.needle_len = needle_len;
-        global.level1 = opts->level1_arg; global.level2 = opts->level2_arg;
-        global.level3 = opts->level3_arg; global.haystack = haystack;
+        global.haystack = haystack;
         global.haystack_count = SIZE(candidates);
         ret = run_threaded(opts->threads_arg);
-        if (ret == 0) output_results(haystack, SIZE(candidates), opts, needle_len);
+        if (ret == 0) output_results(haystack, SIZE(candidates), opts, global.needle_len);
         else { REPORT_OOM; }
     } else { ret = 1; REPORT_OOM; }
 
@@ -183,12 +170,19 @@ read_stdin(text_t *needle, args_info *opts) {
     return ret;
 }
 
+#define SET_TEXT_ARG(src, name, ui_name) \
+    arglen = strlen(src); \
+    if (arglen > LEN_MAX) { \
+        fprintf(stderr, "The %s must be no longer than %d bytes\n", ui_name, LEN_MAX); \
+        ret = 1; goto end; \
+    } \
+    global.name##_len = (len_t)decode_string(src, arglen, global.name);
 
 int 
 main(int argc, char *argv[]) {
     args_info opts;
     int ret = 0;
-    char *needle = NULL;
+    size_t arglen;
 
     if (cmdline_parser(argc, argv, &opts) != 0) return 1;
     if (opts.inputs_num != 1) {
@@ -196,13 +190,12 @@ main(int argc, char *argv[]) {
         ret = 1; 
         goto end;
     }
-    needle = opts.inputs[0];
-    if (strlen(needle) > LEN_MAX) {
-        fprintf(stderr, "The query must be no longer than %d bytes\n", LEN_MAX);
-        ret = 1;
-        goto end;
-    }
-    ret = read_stdin(needle, &opts);
+    SET_TEXT_ARG(opts.inputs[0], needle, "query");
+    SET_TEXT_ARG(opts.level1_arg, level1, "level1 string");
+    SET_TEXT_ARG(opts.level2_arg, level2, "level2 string");
+    SET_TEXT_ARG(opts.level3_arg, level3, "level3 string");
+    if (global.needle_len < 1) { fprintf(stderr, "Empty query not allowed.\n"); ret = 1; goto end; }
+    ret = read_stdin(&opts);
 
 end:
     cmdline_parser_free(&opts);
