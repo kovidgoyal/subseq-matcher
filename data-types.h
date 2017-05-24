@@ -7,10 +7,13 @@
 #pragma once
 #if defined(_MSC_VER)
 #define ISWINDOWS
+#define STDCALL __stdcall
 #ifndef ssize_t
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
 #endif
+#else
+#define STDCALL
 #endif
 #define _POSIX_C_SOURCE 200809L
 
@@ -62,6 +65,10 @@ unsigned int encode_codepoint(text_t ch, char* dest);
 size_t unescape(char *src, char *dest, size_t destlen);
 int cpu_count();
 void* alloc_threads(size_t num_threads);
+#ifdef ISWINDOWS
+bool start_thread(void* threads, size_t i, unsigned int (*start_routine) (void *), void *arg);
+#else
 bool start_thread(void* threads, size_t i, void *(*start_routine) (void *), void *arg);
+#endif
 void wait_for_thread(void *threads, size_t i);
 void free_threads(void *threads);

@@ -22,19 +22,24 @@ typedef struct {
 
 static GlobalData global = {0};
 
-static void 
+static unsigned int STDCALL
 run_scoring(JobData *job_data) {
     for (size_t i = job_data->start; i < job_data->start + job_data->count; i++) {
         global.haystack[i].score = score_item(job_data->workspace, global.haystack[i].src, global.haystack[i].haystack_len, global.haystack[i].positions);
     }
-
+    return 0;
 }
 
 static void*
-run_scoring_threaded(void *job_data) {
+run_scoring_pthreads(void *job_data) {
     run_scoring((JobData*)job_data);
     return NULL;
 }
+#ifdef ISWINDOWS
+#define START_FUNC run_scoring
+#else
+#define START_FUNC run_scoring_pthreads
+#endif
 
 static JobData*
 create_job(size_t i, size_t blocksz) {
@@ -87,7 +92,7 @@ run_threaded(int num_threads_asked) {
         for (i = 0; i < num_threads; i++) {
             job_data[i]->started = false;
             if (job_data[i]->count > 0) {
-                if (!start_thread(threads, i, run_scoring_threaded, job_data[i])) ret = 1;
+                if (!start_thread(threads, i, START_FUNC, job_data[i])) ret = 1;
                 else job_data[i]->started = true;
             }
         }
