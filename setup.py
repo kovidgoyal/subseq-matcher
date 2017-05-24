@@ -150,6 +150,9 @@ def find_c_files():
     for x in os.listdir(src_dir):
         ext = os.path.splitext(x)[1]
         if ext == '.c':
+            if (x == 'windows_compat.c' and not iswindows) or (
+                    x == 'unix_compat.c' and iswindows):
+                continue
             ans.append(os.path.join(src_dir, x))
         elif ext == '.h':
             headers.append(os.path.join(src_dir, x))

@@ -12,17 +12,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifndef ISWINDOWS
-#include <unistd.h>
-#include <pthread.h>
-#endif
-
-#ifdef __APPLE__
-#ifndef _SC_NPROCESSORS_ONLN
-#define _SC_NPROCESSORS_ONLN 58
-#endif
-#endif
-
 typedef struct {
     size_t start, count;
     void *workspace;
@@ -72,15 +61,16 @@ free_job(JobData *job) {
     return NULL;
 }
 
+
 static int
 run_threaded(int num_threads_asked) {
-    int ret = 0, rc;
+    int ret = 0;
     size_t i, blocksz;
-    size_t num_threads = MAX(1, num_threads_asked > 0 ? num_threads_asked : sysconf(_SC_NPROCESSORS_ONLN));
+    size_t num_threads = MAX(1, num_threads_asked > 0 ? num_threads_asked : cpu_count());
     if (global.haystack_size < 10000) num_threads = 1;
     /* printf("num_threads: %lu asked: %d sysconf: %ld\n", num_threads, num_threads_asked, sysconf(_SC_NPROCESSORS_ONLN)); */
 
-    pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
+    void *threads = alloc_threads(num_threads);
     JobData **job_data = calloc(num_threads, sizeof(JobData*));
     if (threads == NULL || job_data == NULL) { ret = 1; goto end; }
 
@@ -97,10 +87,8 @@ run_threaded(int num_threads_asked) {
         for (i = 0; i < num_threads; i++) {
             job_data[i]->started = false;
             if (job_data[i]->count > 0) {
-                if ((rc = pthread_create(threads + i, NULL, run_scoring_threaded, job_data[i]))) {
-                    fprintf(stderr, "Failed to create thread, with error: %s\n", strerror(rc));
-                    ret = 1;
-                } else { job_data[i]->started = true; }
+                if (!start_thread(threads, i, run_scoring_threaded, job_data[i])) ret = 1;
+                else job_data[i]->started = true;
             }
         }
     }
@@ -108,14 +96,15 @@ run_threaded(int num_threads_asked) {
 end:
     if (num_threads > 1 && job_data) {
         for (i = 0; i < num_threads; i++) {
-            if (job_data[i] && job_data[i]->started) pthread_join(threads[i], NULL);
+            if (job_data[i] && job_data[i]->started) wait_for_thread(threads, i);
         }
     }
     for (i = 0; i < num_threads; i++) job_data[i] = free_job(job_data[i]);
     free(job_data);
-    free(threads); 
+    free_threads(threads); 
     return ret;
 }
+
 
 static int 
 read_stdin(args_info *opts, char delimiter) {

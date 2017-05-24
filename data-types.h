@@ -60,3 +60,8 @@ double score_item(void *v, text_t *haystack, len_t haystack_len, len_t *match_po
 size_t decode_string(char *src, size_t sz, text_t *dest);
 unsigned int encode_codepoint(text_t ch, char* dest);
 size_t unescape(char *src, char *dest, size_t destlen);
+int cpu_count();
+void* alloc_threads(size_t num_threads);
+bool start_thread(void* threads, size_t i, void *(*start_routine) (void *), void *arg);
+void wait_for_thread(void *threads, size_t i);
+void free_threads(void *threads);
