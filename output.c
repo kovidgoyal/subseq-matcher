@@ -27,6 +27,20 @@ unescape(char *src, char *dest, size_t destlen) {
                 case 'e':
                 case 'E':
                     S(0x1b);
+                case 'a':
+                    S('\a');
+                case 'b':
+                    S('\b');
+                case 'f':
+                    S('\f');
+                case 'n':
+                    S('\n');
+                case 'r':
+                    S('\r');
+                case 't':
+                    S('\t');
+                case 'v':
+                    S('\v');
                 case 'x':
                     if (i + 1 < srclen && isxdigit(src[i]) && isxdigit(src[i+1])) {
                         buf[0] = src[i]; buf[1] = src[i+1]; buf[2] = 0;
