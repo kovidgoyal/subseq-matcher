@@ -23,7 +23,7 @@ alloc_threads(size_t num_threads) {
 }
 
 bool
-start_thread(void* vt, size_t i, unsigned int (*start_routine) (void *), void *arg) {
+start_thread(void* vt, size_t i, unsigned int (STDCALL *start_routine) (void *), void *arg) {
     uintptr_t *threads = (uintptr_t*)vt;
     errno = 0;
     threads[i] = _beginthreadex(NULL, 0, start_routine, arg, 0, NULL);

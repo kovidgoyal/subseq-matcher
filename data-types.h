@@ -66,7 +66,7 @@ size_t unescape(char *src, char *dest, size_t destlen);
 int cpu_count();
 void* alloc_threads(size_t num_threads);
 #ifdef ISWINDOWS
-bool start_thread(void* threads, size_t i, unsigned int (*start_routine) (void *), void *arg);
+bool start_thread(void* threads, size_t i, unsigned int (STDCALL *start_routine) (void *), void *arg);
 #else
 bool start_thread(void* threads, size_t i, void *(*start_routine) (void *), void *arg);
 #endif
