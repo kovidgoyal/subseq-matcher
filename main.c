@@ -53,7 +53,7 @@ create_job(size_t i, size_t blocksz) {
     if (ans->start >= global.haystack_count) ans->count = 0;
     else ans->count = global.haystack_count - ans->start;
     ans->max_haystack_len = 0;
-    for (size_t i = ans->start; i < ans->start + global.haystack_count; i++) ans->max_haystack_len = MAX(ans->max_haystack_len, global.haystack[i].haystack_len);
+    for (size_t i = ans->start; i < ans->start + ans->count; i++) ans->max_haystack_len = MAX(ans->max_haystack_len, global.haystack[i].haystack_len);
     if (ans->count > 0) {
         ans->workspace = alloc_workspace(ans->max_haystack_len, global.needle_len, global.needle, global.level1, global.level2, global.level3);
         if (!ans->workspace) { free(ans); return NULL; }
@@ -74,8 +74,9 @@ static int
 run_threaded(int num_threads_asked) {
     int ret = 0, rc;
     size_t i, blocksz;
-    size_t num_threads = MAX(1, num_threads_asked || sysconf(_SC_NPROCESSORS_ONLN));
+    size_t num_threads = MAX(1, num_threads_asked > 0 ? num_threads_asked : sysconf(_SC_NPROCESSORS_ONLN));
     if (global.haystack_count < 100) num_threads = 1;
+    /* printf("num_threads: %lu asked: %d sysconf: %ld\n", num_threads, num_threads_asked, sysconf(_SC_NPROCESSORS_ONLN)); */
 
     pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
     JobData **job_data = calloc(num_threads, sizeof(JobData*));

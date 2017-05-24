@@ -172,7 +172,7 @@ def build_obj(src, env):
 def build_exe(objects, env):
     suffix = '-debug' if env.debug else ''
     exe = os.path.join('build', 'subseq-matcher' + suffix)
-    cmd = [env.cc] + objects + ['-o', exe] + env.ldflags
+    cmd = [env.cc] + env.cflags + objects + ['-o', exe] + env.ldflags
     run_tool(cmd)
     return exe
 
