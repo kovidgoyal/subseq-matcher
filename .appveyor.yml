@@ -6,6 +6,13 @@ platform:
     - x86
 
 build_script:
+    - ps: >-
+        If ($env:Platform -Match "x86") {
+            $env:VCVARS_PLATFORM="x86"
+        } Else {
+            $env:VCVARS_PLATFORM="amd64"
+        }
+    - call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
     - C:\Python27-x64\python.exe setup.py
 
 test_script:
