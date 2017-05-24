@@ -11,7 +11,7 @@
 #include <process.h>
 
 int 
-number_of_processors() {
+cpu_count() {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
     return sysinfo.dwNumberOfProcessors;

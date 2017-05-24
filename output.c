@@ -9,7 +9,14 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#ifdef ISWINDOWS
+#include <io.h>
+#define STDOUT_FILENO 1
+static inline ssize_t ms_write(int fd, const void* buf, size_t count) { return _write(fd, buf, (unsigned int)count); }
+#define write ms_write
+#else
 #include <unistd.h>
+#endif
 #include <errno.h>
 
 static char mark_before[100] = {0}, mark_after[100] = {0};
@@ -64,7 +71,7 @@ static int
 cmpscore(const void *a, const void *b) {
     double sa = FIELD(a, score), sb = FIELD(b, score);
     // Sort descending
-    return (sa > sb) ? -1 : ((sa == sb) ? (FIELD(a, idx) - FIELD(b, idx)) : 1);
+    return (sa > sb) ? -1 : ((sa == sb) ? ((int)FIELD(a, idx) - (int)FIELD(b, idx)) : 1);
 }
 
 #define BUF_CAPACITY 16384
@@ -73,7 +80,7 @@ static size_t write_buf_sz = 0;
 
 static void
 eintr_write() {
-    int ret;
+    ssize_t ret;
     char *buf = write_buf;
     while (write_buf_sz > 0) {
         errno = 0;
