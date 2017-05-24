@@ -1,0 +1,12 @@
+os: Visual Studio 2015
+clone_depth: 10
+
+platform:
+    - x64
+    - x86
+
+build_script:
+    - C:\Python27-x64\python.exe setup.py
+
+test_script:
+    - C:\Python27-x64\python.exe test.py
