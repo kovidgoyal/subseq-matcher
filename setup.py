@@ -206,12 +206,12 @@ def build_exe(objects, env):
     exe = os.path.join('build', 'subseq-matcher' + suffix)
     if iswindows:
         exe += '.exe'
-    cflags = list(env.cflags)
-    if isosx:
-        cflags.remove('-pthread')
-    cmd = [env.linker] + cflags + objects + (
-        ['/OUT:' + exe] if iswindows else ['-o', exe]
-    ) + env.ldflags
+        cmd = [env.linker] + objects + ['/OUT:' + exe] + env.ldflags
+    else:
+        cflags = list(env.cflags)
+        if isosx:
+            cflags.remove('-pthread')
+        cmd = [env.linker] + cflags + objects + ['-o', exe] + env.ldflags
     run_tool(cmd)
     return exe
 
