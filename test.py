@@ -8,9 +8,11 @@ from __future__ import (absolute_import, division, print_function,
 import bz2
 import os
 import subprocess
+import sys
 import unittest
 
 base = os.path.dirname(os.path.abspath(__file__))
+iswindows = hasattr(sys, 'getwindowsversion')
 
 
 def run(input_data,
@@ -24,8 +26,11 @@ def run(input_data,
         input_data = '\n'.join(input_data)
     if not isinstance(input_data, bytes):
         input_data = input_data.encode('utf-8')
+    exe = 'subseq-matcher-debug'
+    if iswindows:
+        exe = 'subseq-matcher.exe'
     cmd = [
-        os.path.join(base, 'build', 'subseq-matcher-debug'), '-t',
+        os.path.join(base, 'build', exe), '-t',
         str(threads)
     ]
     if mark:
