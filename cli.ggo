@@ -13,24 +13,24 @@ character occurs immediately after one of these, it's score is higher.
 section "Control scoring"
 
 option "level1" 1 "The level 1 special characters."
-	string default="/" optional
+	string default="/" 
 
 option "level2" 2 "The level 2 special characters."
-	string default="-_ 0123456789" optional
+	string default="-_ 0123456789" 
 
 option "level3" 3 "The level 3 special characters."
-	string default="." optional
+	string default="." 
 
 section "Control output"
 
 option "limit" l "Limit the number of returned results."
-	int default="0" optional
+	int default="0" 
 
 option "mark-before" b "String to output before each matched character"
-    string optional
+    string 
 
 option "mark-after" a "String to output after each matched character"
-    string optional
+    string 
 
 option "threads" t "Number of worker threads to use. Default is to use the number of available CPUs"
-    int default="0" optional
+    int default="0" 

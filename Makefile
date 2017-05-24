@@ -29,10 +29,10 @@ $(BUILD)/cli.o: $(BUILD)/cli.c
 
 $(BUILD)/$(CLI).c: $(CLI).ggo
 	mkdir -p build
-	gengetopt -i $(CLI).ggo -F $(BUILD)/$(CLI) -u
+	gengetopt -i $(CLI).ggo -F $(BUILD)/$(CLI) -u --default-optional
 
 show-help: $(CLI).ggo
-	gengetopt -i $(CLI).ggo --show-help 
+	gengetopt -i $(CLI).ggo --show-help --default-optional
 
 $(EXE): $(OBJECTS)
 	$(CC) $(CCFLAGS) $(OBJECTS) -o $(EXE)
