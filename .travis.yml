@@ -1,0 +1,23 @@
+matrix:
+    fast_finish: true
+    include:
+        - os: linux
+          dist: trusty
+          group: beta
+          sudo: false
+          env:
+            - CC=gcc
+          language: generic
+         - os: linux
+          dist: trusty
+          group: beta
+          sudo: false
+          env:
+            - CC=clang
+          language: generic
+
+before_script:
+    - make
+
+script:
+    - make test
