@@ -12,19 +12,18 @@
 #include <stdio.h>
 
 typedef struct {
-    len_t *positions_buf;
-    len_t **positions;
-    len_t *positions_count;
-    len_t needle_len;
-    len_t max_haystack_len;
-    len_t haystack_len;
-    len_t *match_positions;
-    len_t *address;
+    len_t *positions_buf;  // buffer to store positions for every char in needle
+    len_t **positions;  // Array of pointers into positions_buf
+    len_t *positions_count; // Array of counts for positions
+    len_t needle_len;  // Length of the needle
+    len_t max_haystack_len;  // Max length of a string in the haystack
+    len_t haystack_len; // Length of the current string in the haystack
+    len_t *address; // Array of offsets into the positions array
     double max_score_per_char;
-    uint8_t *level_factors;
-    char *level1, *level2, *level3;
-    char *needle;
-    char *haystack;
+    uint8_t *level_factors;  // Array of score factors for every character in the current haystack that matches a character in the needle
+    char *level1, *level2, *level3;  // The characters in the levels
+    char *needle;  // The current needle
+    char *haystack; //The current haystack
 } WorkSpace;
 
 void*
@@ -70,6 +69,7 @@ level_factor_for(char current, char last, WorkSpace *w) {
 
 static void
 init_workspace(WorkSpace *w, char *haystack, len_t haystack_len) {
+    // Calculate the positions and level_factors arrays for the specified haystack
     bool level_factor_calculated = false;
     memset(w->positions_count, 0, sizeof(*(w->positions_count)) * 2 * w->needle_len);
     memset(w->level_factors, 0, sizeof(*(w->level_factors)) * w->max_haystack_len);
@@ -107,7 +107,6 @@ has_atleast_one_match(WorkSpace *w) {
 }
 
 #define POSITION(x) w->positions[x][w->address[x]]
-#define CHAR(x) w->haystack[POSITION(x)]
 
 static inline bool
 increment_address(WorkSpace *w) {
@@ -164,4 +163,3 @@ score_item(void *v, char *haystack, len_t haystack_len, len_t *match_positions) 
     if (!has_atleast_one_match(w)) return 0;
     return process_item(w, match_positions);
 }
-
