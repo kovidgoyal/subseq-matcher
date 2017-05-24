@@ -14,6 +14,12 @@
 #include <ctype.h>
 #include <pthread.h>
 
+#ifdef __APPLE__
+#ifndef _SC_NPROCESSORS_ONLN
+#define _SC_NPROCESSORS_ONLN 58
+#endif
+#endif
+
 typedef struct {
     size_t start, count;
     void *workspace;

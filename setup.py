@@ -46,9 +46,12 @@ def cc_version():
 
 def get_sanitize_args(cc, ccver):
     sanitize_args = set()
+    if cc == 'gcc' and ccver < (4, 8):
+        return sanitize_args
     sanitize_args.add('-fno-omit-frame-pointer')
     sanitize_args.add('-fsanitize=address')
-    if (cc == 'gcc' and ccver >= (5, 0)) or cc == 'clang':
+    if (cc == 'gcc' and ccver >= (5, 0)) or (cc == 'clang' and not isosx):
+        # clang on oS X does not support -fsanitize=undefined
         sanitize_args.add('-fsanitize=undefined')
         # if cc == 'gcc' or (cc == 'clang' and ccver >= (4, 2)):
         #     sanitize_args.add('-fno-sanitize-recover=all')
@@ -60,13 +63,13 @@ def init_env(debug=False, sanitize=False, native_optimizations=False):
     cc, ccver, cc_name = cc_version()
     print('CC:', cc, ccver, cc_name)
     stack_protector = '-fstack-protector'
-    if ccver >= (4, 9) and cc == 'gcc':
+    if ccver >= (4, 9) and cc_name == 'gcc':
         stack_protector += '-strong'
     missing_braces = ''
-    if ccver < (5, 2) and cc == 'gcc':
+    if ccver < (5, 2) and cc_name == 'gcc':
         missing_braces = '-Wno-missing-braces'
     optimize = '-ggdb' if debug or sanitize else '-O3'
-    sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
+    sanitize_args = get_sanitize_args(cc_name, ccver) if sanitize else set()
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS',
         ('-Wextra -Wno-missing-field-initializers -Wall -std=c99'
@@ -177,7 +180,10 @@ def build_obj(src, env):
 def build_exe(objects, env):
     suffix = '-debug' if env.debug else ''
     exe = os.path.join('build', 'subseq-matcher' + suffix)
-    cmd = [env.cc] + env.cflags + objects + ['-o', exe] + env.ldflags
+    cflags = list(env.cflags)
+    if isosx:
+        cflags.remove('-pthread')
+    cmd = [env.cc] + cflags + objects + ['-o', exe] + env.ldflags
     run_tool(cmd)
     return exe
 

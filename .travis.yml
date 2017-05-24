@@ -1,21 +1,16 @@
-matrix:
-    fast_finish: true
-    include:
-        - os: linux
-          dist: trusty
-          group: beta
-          sudo: false
-          env:
-            - CC=gcc
-          language: generic
+language: c
+compiler:
+    - clang
+    - gcc
+os:
+    - linux
+    - osx
+dist: trusty
 
-        - os: linux
-          dist: trusty
-          group: beta
-          sudo: false
-          env:
-            - CC=clang
-          language: generic
+matrix:
+    exclude:
+        - os: osx
+          compiler: gcc
 
 before_script:
     - make
