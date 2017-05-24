@@ -61,12 +61,13 @@ create_job(size_t i, size_t blocksz) {
     return ans;
 }
 
-static void
+static JobData*
 free_job(JobData *job) {
     if (job) {
         if (job->workspace) free_workspace(job->workspace);
         free(job);
     }
+    return NULL;
 }
 
 static int
@@ -107,7 +108,7 @@ end:
             if (job_data[i] && job_data[i]->started) pthread_join(threads[i], NULL);
         }
     }
-    for (i = 0; i < num_threads; i++) { if (job_data[i]) free_job(job_data[i]); }
+    for (i = 0; i < num_threads; i++) job_data[i] = free_job(job_data[i]);
     free(job_data);
     free(threads); 
     return ret;
