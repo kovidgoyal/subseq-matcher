@@ -27,6 +27,7 @@ typedef struct {
     size_t haystack_count;
     text_t *level1, *level2, *level3, *needle;
     len_t needle_len;
+    size_t haystack_size;
 } GlobalData;
 
 static GlobalData global = {0};
@@ -75,7 +76,7 @@ run_threaded(int num_threads_asked) {
     int ret = 0, rc;
     size_t i, blocksz;
     size_t num_threads = MAX(1, num_threads_asked > 0 ? num_threads_asked : sysconf(_SC_NPROCESSORS_ONLN));
-    if (global.haystack_count < 100) num_threads = 1;
+    if (global.haystack_size < 10000) num_threads = 1;
     /* printf("num_threads: %lu asked: %d sysconf: %ld\n", num_threads, num_threads_asked, sysconf(_SC_NPROCESSORS_ONLN)); */
 
     pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
@@ -149,6 +150,7 @@ read_stdin(text_t *needle, args_info *opts) {
                 memcpy(&NEXT(chars), linebuf, sz);
                 NEXT(candidates).src_sz = sz;
                 NEXT(candidates).haystack_len = MIN(LEN_MAX, sz - 1);
+                global.haystack_size += NEXT(candidates).haystack_len;
                 NEXT(candidates).idx = idx++;
                 INC(candidates, 1); INC(chars, sz); 
             }
