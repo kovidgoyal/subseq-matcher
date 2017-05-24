@@ -83,6 +83,12 @@ class TestMatcher(unittest.TestCase):
             '\x1b[32mt\x1b[39me\x1b[32ms\x1b[39mt',
             mark=True)
 
+    def test_scoring(self):
+        # Match at start
+        self.basic_test('archer\nelementary', 'e', 'elementary\narcher')
+        # Match at level factor
+        self.basic_test('xxxy\nxx/y', 'y', 'xx/y\nxxxy')
+
     def test_threading(self):
         ' Test matching on a large data set with different number of threads '
         with open(os.path.join(base, 'test-data', 'qt-files.bz2'), 'rb') as f:

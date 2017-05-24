@@ -61,19 +61,19 @@ free_workspace(void *v) {
 
 static inline bool 
 has_char(text_t *text, len_t sz, text_t ch) {
-    ch = LOWERCASE(ch);
     for(len_t i = 0; i < sz; i++) {
-        if(text[sz] == ch) return true;
+        if(text[i] == ch) return true;
     }
     return false;
 }
 
 static inline uint8_t
 level_factor_for(text_t current, text_t last, WorkSpace *w) {
-    if (has_char(w->level1, w->level1_len, last)) return 90;
-    if (has_char(w->level2, w->level2_len, last)) return 80;
+    text_t lch = LOWERCASE(last);
+    if (has_char(w->level1, w->level1_len, lch)) return 90;
+    if (has_char(w->level2, w->level2_len, lch)) return 80;
     if (IS_LOWERCASE(last) && IS_UPPERCASE(current)) return 80; // CamelCase
-    if (has_char(w->level3, w->level3_len, last)) return 70;
+    if (has_char(w->level3, w->level3_len, lch)) return 70;
     return 0;
 }
 
@@ -142,11 +142,18 @@ address_is_monotonic(WorkSpace *w) {
 static inline double
 calc_score(WorkSpace *w) {
     double ans = 0;
-    len_t distance;
+    len_t distance, pos;
     for (len_t i = 0; i < w->needle_len; i++) {
-        distance = i > 0 ? POSITION(i) - POSITION(i-1) : 0;
-        if (distance < 2) ans += w->max_score_per_char; // consecutive characters
-        else if (w->level_factors[i]) ans += w->max_score_per_char / w->level_factors[i];  // at a special location
+        pos = POSITION(i);
+        if (i == 0) distance = pos;
+        else {
+            distance = pos - POSITION(i-1);
+            if (distance < 2) {
+                ans += w->max_score_per_char; // consecutive characters
+                continue;
+            }
+        }
+        if (w->level_factors[pos]) ans += (100 * w->max_score_per_char) / w->level_factors[pos];  // at a special location
         else ans += (0.75 * w->max_score_per_char) / distance;
     }
     return ans;
