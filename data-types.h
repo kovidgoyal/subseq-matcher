@@ -52,3 +52,4 @@ void* free_workspace(void *v);
 double score_item(void *v, text_t *haystack, len_t haystack_len, len_t *match_positions);
 size_t decode_string(char *src, size_t sz, text_t *dest);
 unsigned int encode_codepoint(text_t ch, char* dest);
+size_t unescape(char *src, char *dest, size_t destlen);

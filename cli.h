@@ -39,6 +39,12 @@ struct gengetopt_args_info
 {
   const char *help_help; /**< @brief Print help and exit help description.  */
   const char *version_help; /**< @brief Print version and exit help description.  */
+  char * delimiter_arg;	/**< @brief The character at which to split the input into lines. Defaults to the new line character..  */
+  char * delimiter_orig;	/**< @brief The character at which to split the input into lines. Defaults to the new line character. original value given at command line.  */
+  const char *delimiter_help; /**< @brief The character at which to split the input into lines. Defaults to the new line character. help description.  */
+  int threads_arg;	/**< @brief Number of worker threads to use. Default is to use the number of available CPUs (default='0').  */
+  char * threads_orig;	/**< @brief Number of worker threads to use. Default is to use the number of available CPUs original value given at command line.  */
+  const char *threads_help; /**< @brief Number of worker threads to use. Default is to use the number of available CPUs help description.  */
   char * level1_arg;	/**< @brief The level 1 special characters. (default='/').  */
   char * level1_orig;	/**< @brief The level 1 special characters. original value given at command line.  */
   const char *level1_help; /**< @brief The level 1 special characters. help description.  */
@@ -57,19 +63,17 @@ struct gengetopt_args_info
   char * mark_after_arg;	/**< @brief String to output after each matched character.  */
   char * mark_after_orig;	/**< @brief String to output after each matched character original value given at command line.  */
   const char *mark_after_help; /**< @brief String to output after each matched character help description.  */
-  int threads_arg;	/**< @brief Number of worker threads to use. Default is to use the number of available CPUs (default='0').  */
-  char * threads_orig;	/**< @brief Number of worker threads to use. Default is to use the number of available CPUs original value given at command line.  */
-  const char *threads_help; /**< @brief Number of worker threads to use. Default is to use the number of available CPUs help description.  */
   
   unsigned int help_given ;	/**< @brief Whether help was given.  */
   unsigned int version_given ;	/**< @brief Whether version was given.  */
+  unsigned int delimiter_given ;	/**< @brief Whether delimiter was given.  */
+  unsigned int threads_given ;	/**< @brief Whether threads was given.  */
   unsigned int level1_given ;	/**< @brief Whether level1 was given.  */
   unsigned int level2_given ;	/**< @brief Whether level2 was given.  */
   unsigned int level3_given ;	/**< @brief Whether level3 was given.  */
   unsigned int limit_given ;	/**< @brief Whether limit was given.  */
   unsigned int mark_before_given ;	/**< @brief Whether mark-before was given.  */
   unsigned int mark_after_given ;	/**< @brief Whether mark-after was given.  */
-  unsigned int threads_given ;	/**< @brief Whether threads was given.  */
 
   char **inputs ; /**< @brief unamed options (options without names) */
   unsigned inputs_num ; /**< @brief unamed options number */

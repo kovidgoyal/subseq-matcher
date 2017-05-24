@@ -109,7 +109,7 @@ end:
 }
 
 static int 
-read_stdin(args_info *opts) {
+read_stdin(args_info *opts, char delimiter) {
     char *linebuf = NULL;
     size_t n = 0, idx = 0;
     ssize_t sz = 0;
@@ -123,7 +123,7 @@ read_stdin(args_info *opts) {
 
     while (true) {
         errno = 0;
-        sz = getline(&linebuf, &n, stdin);
+        sz = getdelim(&linebuf, &n, delimiter, stdin);
         if (sz < 1) {
             if (errno != 0) {
                 perror("Failed to read from STDIN with error:"); 
@@ -183,6 +183,7 @@ main(int argc, char *argv[]) {
     args_info opts;
     int ret = 0;
     size_t arglen;
+    char delimiter[10] = {0};
 
     if (cmdline_parser(argc, argv, &opts) != 0) return 1;
     if (opts.inputs_num != 1) {
@@ -195,7 +196,9 @@ main(int argc, char *argv[]) {
     SET_TEXT_ARG(opts.level2_arg, level2, "level2 string");
     SET_TEXT_ARG(opts.level3_arg, level3, "level3 string");
     if (global.needle_len < 1) { fprintf(stderr, "Empty query not allowed.\n"); ret = 1; goto end; }
-    ret = read_stdin(&opts);
+    if (opts.delimiter_arg) unescape(opts.delimiter_arg, delimiter, 5);
+    else delimiter[0] = '\n';
+    ret = read_stdin(&opts, delimiter[0]);
 
 end:
     cmdline_parser_free(&opts);

@@ -15,7 +15,7 @@
 static char mark_before[100] = {0}, mark_after[100] = {0};
 static size_t mark_before_sz = 0, mark_after_sz = 0;
 
-static size_t
+size_t
 unescape(char *src, char *dest, size_t destlen) {
     size_t srclen = strlen(src), i, j;
     char buf[5] = {0};
