@@ -69,6 +69,12 @@ class TestMatcher(unittest.TestCase):
         self.basic_test('abc\nxyz', 'ba', '')
         self.basic_test('abc\n123', 'abc', 'abc')
 
+    def test_case_insesitive(self):
+        self.basic_test('test\nxyz', 'Te', 'test')
+        self.basic_test('test\nxyz', 'XY', 'xyz')
+        self.basic_test('test\nXYZ', 'xy', 'XYZ')
+        self.basic_test('test\nXYZ', 'mn', '')
+
     def test_marking(self):
         ' Marking of matched characters '
         self.basic_test(

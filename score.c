@@ -61,6 +61,7 @@ free_workspace(void *v) {
 
 static inline bool 
 has_char(text_t *text, len_t sz, text_t ch) {
+    ch = LOWERCASE(ch);
     for(len_t i = 0; i < sz; i++) {
         if(text[sz] == ch) return true;
     }
@@ -71,7 +72,7 @@ static inline uint8_t
 level_factor_for(text_t current, text_t last, WorkSpace *w) {
     if (has_char(w->level1, w->level1_len, last)) return 90;
     if (has_char(w->level2, w->level2_len, last)) return 80;
-    if ('a' <= last && last <= 'z' && 'A' <= current && current <= 'Z') return 80; // CamelCase
+    if (IS_LOWERCASE(last) && IS_UPPERCASE(current)) return 80; // CamelCase
     if (has_char(w->level3, w->level3_len, last)) return 70;
     return 0;
 }
@@ -85,7 +86,7 @@ init_workspace(WorkSpace *w, text_t *haystack, len_t haystack_len) {
     for (len_t i = 0; i < haystack_len; i++) {
         level_factor_calculated = false;
         for (len_t j = 0; j < w->needle_len; j++) {
-            if (w->needle[j] == haystack[i]) {
+            if (w->needle[j] == LOWERCASE(haystack[i])) {
                 if (!level_factor_calculated) {
                     level_factor_calculated = true;
                     w->level_factors[i] = i > 0 ? level_factor_for(haystack[i], haystack[i-1], w) : 0;

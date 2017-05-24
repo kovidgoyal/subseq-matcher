@@ -173,13 +173,19 @@ read_stdin(args_info *opts, char delimiter) {
     return ret;
 }
 
+static inline void
+lowercase(text_t *str, len_t sz) {
+    for (len_t i = 0; i < sz; i++) str[i] = LOWERCASE(str[i]);
+}
+
 #define SET_TEXT_ARG(src, name, ui_name) \
     arglen = strlen(src); \
     if (arglen > LEN_MAX) { \
         fprintf(stderr, "The %s must be no longer than %d bytes\n", ui_name, LEN_MAX); \
         ret = 1; goto end; \
     } \
-    global.name##_len = (len_t)decode_string(src, arglen, global.name);
+    global.name##_len = (len_t)decode_string(src, arglen, global.name); \
+    lowercase(global.name, global.name##_len)
 
 int 
 main(int argc, char *argv[]) {
