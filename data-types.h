@@ -5,6 +5,13 @@
  */
 
 #pragma once
+#if defined(_MSC_VER)
+#define ISWINDOWS
+#ifndef ssize_t
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+#endif
 #define _POSIX_C_SOURCE 200809L
 
 #include <sys/types.h>

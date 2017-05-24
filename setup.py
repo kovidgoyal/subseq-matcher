@@ -20,8 +20,9 @@ base = os.path.dirname(os.path.abspath(__file__))
 build_dir = os.path.join(base, 'build')
 _plat = sys.platform.lower()
 isosx = 'darwin' in _plat
+iswindows = hasattr(sys, 'getwindowsversion')
 is_travis = os.environ.get('TRAVIS') == 'true'
-Env = namedtuple('Env', 'cc cflags ldflags debug cc_name cc_ver')
+Env = namedtuple('Env', 'cc cflags ldflags linker debug cc_name cc_ver')
 
 
 def safe_makedirs(path):
@@ -32,62 +33,79 @@ def safe_makedirs(path):
             raise
 
 
-def cc_version():
-    cc = os.environ.get('CC', 'gcc')
-    raw = subprocess.check_output([cc, '-dM', '-E', '-'],
-                                  stdin=open(os.devnull, 'rb'))
-    m = re.search(br'^#define __clang__ 1', raw, flags=re.M)
-    cc_name = 'gcc' if m is None else 'clang'
-    ver = int(
-        re.search(br'#define __GNUC__ (\d+)', raw, flags=re.M).group(1)), int(
-        re.search(br'#define __GNUC_MINOR__ (\d+)', raw, flags=re.M).group(1))
-    return cc, ver, cc_name
+if iswindows:
 
+    def cc_version():
+        return 'cl.exe', (0, 0), 'cl'
 
-def get_sanitize_args(cc, ccver):
-    sanitize_args = set()
-    if cc == 'gcc' and ccver < (4, 8):
+    def get_sanitize_args(*a):
+        return set()
+
+    def init_env(debug=False, sanitize=False, native_optimizations=False):
+        cc, ccver, cc_name = cc_version()
+        cflags = '/c /nologo /MD /W3 /EHsc /DNDEBUG'.split()
+        ldflags = []
+        return Env(cc, cflags, ldflags, 'link.exe', debug, cc_name, ccver)
+else:
+
+    def cc_version():
+        cc = os.environ.get('CC', 'gcc')
+        raw = subprocess.check_output(
+            [cc, '-dM', '-E', '-'], stdin=open(os.devnull, 'rb'))
+        m = re.search(br'^#define __clang__ 1', raw, flags=re.M)
+        cc_name = 'gcc' if m is None else 'clang'
+        ver = int(
+            re.search(br'#define __GNUC__ (\d+)', raw, flags=re.M)
+            .group(1)), int(
+                re.search(br'#define __GNUC_MINOR__ (\d+)', raw, flags=re.M)
+                .group(1))
+        return cc, ver, cc_name
+
+    def get_sanitize_args(cc, ccver):
+        sanitize_args = set()
+        if cc == 'gcc' and ccver < (4, 8):
+            return sanitize_args
+        sanitize_args.add('-fno-omit-frame-pointer')
+        sanitize_args.add('-fsanitize=address')
+        if (cc == 'gcc' and ccver >= (5, 0)) or (cc == 'clang' and not isosx):
+            # clang on oS X does not support -fsanitize=undefined
+            sanitize_args.add('-fsanitize=undefined')
+            # if cc == 'gcc' or (cc == 'clang' and ccver >= (4, 2)):
+            #     sanitize_args.add('-fno-sanitize-recover=all')
         return sanitize_args
-    sanitize_args.add('-fno-omit-frame-pointer')
-    sanitize_args.add('-fsanitize=address')
-    if (cc == 'gcc' and ccver >= (5, 0)) or (cc == 'clang' and not isosx):
-        # clang on oS X does not support -fsanitize=undefined
-        sanitize_args.add('-fsanitize=undefined')
-        # if cc == 'gcc' or (cc == 'clang' and ccver >= (4, 2)):
-        #     sanitize_args.add('-fno-sanitize-recover=all')
-    return sanitize_args
 
-
-def init_env(debug=False, sanitize=False, native_optimizations=False):
-    native_optimizations = native_optimizations and not sanitize and not debug
-    cc, ccver, cc_name = cc_version()
-    print('CC:', cc, ccver, cc_name)
-    stack_protector = '-fstack-protector'
-    if ccver >= (4, 9) and cc_name == 'gcc':
-        stack_protector += '-strong'
-    missing_braces = ''
-    if ccver < (5, 2) and cc_name == 'gcc':
-        missing_braces = '-Wno-missing-braces'
-    optimize = '-ggdb' if debug or sanitize else '-O3'
-    sanitize_args = get_sanitize_args(cc_name, ccver) if sanitize else set()
-    cflags = os.environ.get(
-        'OVERRIDE_CFLAGS',
-        ('-Wextra -Wno-missing-field-initializers -Wall -std=c99'
-         ' -pedantic-errors -Werror {} {} -D{}DEBUG -fwrapv {} {} -pipe {}'
-         ).format(optimize, ' '.join(sanitize_args), ('' if debug else 'N'),
-                  stack_protector, missing_braces, '-march=native'
-                  if native_optimizations else ''))
-    cflags = shlex.split(cflags) + shlex.split(
-        sysconfig.get_config_var('CCSHARED'))
-    ldflags = os.environ.get('OVERRIDE_LDFLAGS',
-                             '-Wall ' + ' '.join(sanitize_args) +
-                             ('' if debug else ' -O3'))
-    ldflags = shlex.split(ldflags)
-    cflags += shlex.split(os.environ.get('CFLAGS', ''))
-    ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
-    cflags.append('-pthread')
-    safe_makedirs(build_dir)
-    return Env(cc, cflags, ldflags, debug, cc_name, ccver)
+    def init_env(debug=False, sanitize=False, native_optimizations=False):
+        native_optimizations = (native_optimizations and not sanitize and
+                                not debug)
+        cc, ccver, cc_name = cc_version()
+        print('CC:', cc, ccver, cc_name)
+        stack_protector = '-fstack-protector'
+        if ccver >= (4, 9) and cc_name == 'gcc':
+            stack_protector += '-strong'
+        missing_braces = ''
+        if ccver < (5, 2) and cc_name == 'gcc':
+            missing_braces = '-Wno-missing-braces'
+        optimize = '-ggdb' if debug or sanitize else '-O3'
+        sanitize_args = get_sanitize_args(cc_name,
+                                          ccver) if sanitize else set()
+        cflags = os.environ.get(
+            'OVERRIDE_CFLAGS',
+            ('-Wextra -Wno-missing-field-initializers -Wall -std=c99'
+             ' -pedantic-errors -Werror {} {} -D{}DEBUG -fwrapv {} {} -pipe {}'
+             ).format(optimize, ' '.join(sanitize_args), (''
+                                                          if debug else 'N'),
+                      stack_protector, missing_braces, '-march=native'
+                      if native_optimizations else ''))
+        cflags = shlex.split(cflags) + shlex.split(
+            sysconfig.get_config_var('CCSHARED'))
+        ldflags = os.environ.get('OVERRIDE_LDFLAGS',
+                                 '-Wall ' + ' '.join(sanitize_args) +
+                                 ('' if debug else ' -O3'))
+        ldflags = shlex.split(ldflags)
+        cflags += shlex.split(os.environ.get('CFLAGS', ''))
+        ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
+        cflags.append('-pthread')
+        return Env(cc, cflags, ldflags, cc, debug, cc_name, ccver)
 
 
 def define(x):
@@ -165,14 +183,17 @@ def build_obj(src, env):
     suffix = '-debug' if env.debug else ''
     obj = os.path.join(
         'build', os.path.basename(src).rpartition('.')[0] + suffix + '.o')
-    extra = []
-    # The code generated by gengetopt has unused variables according to
-    # gcc, but not clang. Since I dont control the code and there is no way
-    # short of compiling a test executable to detect if the compiler is clang
-    # or gcc
-    if src.endswith('/cli.c') and env.cc_name == 'gcc':
-        extra.append('-Wno-unused-but-set-variable')
-    cmd = [env.cc] + env.cflags + extra + ['-c', src] + ['-o', obj]
+    if iswindows:
+        cmd = [env.cc] + env.cflags + ['/Tc' + src] + ['/Fo' + obj]
+    else:
+        extra = []
+        # The code generated by gengetopt has unused variables according to
+        # gcc, but not clang. Since I dont control the code and there is no way
+        # short of compiling a test executable to detect if the compiler is
+        # clang or gcc
+        if src.endswith('/cli.c') and env.cc_name == 'gcc':
+            extra.append('-Wno-unused-but-set-variable')
+        cmd = [env.cc] + env.cflags + extra + ['-c', src] + ['-o', obj]
     run_tool(cmd)
     return obj
 
@@ -180,10 +201,14 @@ def build_obj(src, env):
 def build_exe(objects, env):
     suffix = '-debug' if env.debug else ''
     exe = os.path.join('build', 'subseq-matcher' + suffix)
+    if iswindows:
+        exe += '.exe'
     cflags = list(env.cflags)
     if isosx:
         cflags.remove('-pthread')
-    cmd = [env.cc] + cflags + objects + ['-o', exe] + env.ldflags
+    cmd = [env.linker] + cflags + objects + (
+        ['/OUT:' + exe] if iswindows else ['-o', exe]
+    ) + env.ldflags
     run_tool(cmd)
     return exe
 
@@ -191,9 +216,10 @@ def build_exe(objects, env):
 def build(args):
     getopt(args)
     sources, headers = find_c_files()
-    env = init_env(debug=True, sanitize=True)
-    debug_objects = [build_obj(c, env) for c in sources]
-    build_exe(debug_objects, env)
+    if not iswindows:
+        env = init_env(debug=True, sanitize=True)
+        debug_objects = [build_obj(c, env) for c in sources]
+        build_exe(debug_objects, env)
     env = init_env()
     objects = [build_obj(c, env) for c in sources]
     build_exe(objects, env)
@@ -202,6 +228,7 @@ def build(args):
 def main():
     args = option_parser().parse_args()
     os.chdir(base)
+    safe_makedirs(build_dir)
     if args.action == 'build':
         build(args)
     elif args.action == 'test':

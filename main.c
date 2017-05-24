@@ -9,10 +9,13 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+
+#ifndef ISWINDOWS
+#include <unistd.h>
 #include <pthread.h>
+#endif
 
 #ifdef __APPLE__
 #ifndef _SC_NPROCESSORS_ONLN
@@ -144,7 +147,7 @@ read_stdin(args_info *opts, char delimiter) {
                 ENSURE_SPACE(Candidate, candidates, 1);
                 sz = decode_string(linebuf, sz, &(NEXT(chars)));
                 NEXT(candidates).src_sz = sz;
-                NEXT(candidates).haystack_len = MIN(LEN_MAX, sz);
+                NEXT(candidates).haystack_len = (len_t)(MIN(LEN_MAX, sz));
                 global.haystack_size += NEXT(candidates).haystack_len;
                 NEXT(candidates).idx = idx++;
                 INC(candidates, 1); INC(chars, sz); 
