@@ -65,6 +65,7 @@ static void
 free_job(JobData *job) {
     if (job) {
         if (job->workspace) free_workspace(job->workspace);
+        free(job);
     }
 }
 
