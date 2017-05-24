@@ -11,6 +11,13 @@
 #ifndef ssize_t
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
+#ifndef SSIZE_MAX
+#if defined(_WIN64)
+    #define SSIZE_MAX _I64_MAX
+#else
+    #define SSIZE_MAX LONG_MAX
+#endif
+#endif
 #endif
 #else
 #define STDCALL
@@ -67,6 +74,7 @@ int cpu_count();
 void* alloc_threads(size_t num_threads);
 #ifdef ISWINDOWS
 bool start_thread(void* threads, size_t i, unsigned int (STDCALL *start_routine) (void *), void *arg);
+ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream);
 #else
 bool start_thread(void* threads, size_t i, void *(*start_routine) (void *), void *arg);
 #endif
