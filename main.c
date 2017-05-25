@@ -12,6 +12,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <fcntl.h>
+#ifndef ISWINDOWS
+#include <unistd.h>
+#endif
 
 typedef struct {
     size_t start, count;
@@ -187,10 +190,6 @@ lowercase(text_t *str, len_t sz) {
     } \
     global.name##_len = (len_t)decode_string(src, arglen, global.name); \
     lowercase(global.name, global.name##_len)
-
-#ifndef ISWINDOWS
-#include <unistd.h>
-#endif
 
 #ifndef gengetopt_args_info_versiontext
 extern const char* gengetopt_args_info_versiontext;
