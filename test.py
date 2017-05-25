@@ -54,6 +54,10 @@ def run(input_data,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
+    if iswindows:
+        import msvcrt
+        msvcrt.setmode(p.stdin.fileno(), os.O_BINARY)
+        msvcrt.setmode(p.stdout.fileno(), os.O_BINARY)
     stdout = p.communicate(input_data)[0].decode('utf-8')
     stdout = list(filter(None, stdout.split(delimiter or '\n')))
     return p.wait(), stdout
