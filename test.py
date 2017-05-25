@@ -20,6 +20,7 @@ def run(input_data,
         threads=1,
         mark=False,
         positions=False,
+        delimiter=None,
         level1=None,
         level2=None,
         level3=None):
@@ -41,6 +42,8 @@ def run(input_data,
             cmd.extend(['-b', mark, '-a', mark])
     if positions:
         cmd.append('-p')
+    if delimiter:
+        cmd.extend(('-d', delimiter))
     for i in '123':
         val = locals()['level' + i]
         if val is not None:
@@ -51,8 +54,9 @@ def run(input_data,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
-    stdout = p.communicate(input_data)[0]
-    return p.wait(), stdout.decode('utf-8').splitlines()
+    stdout = p.communicate(input_data)[0].decode('utf-8')
+    stdout = list(filter(None, stdout.split(delimiter or '\n')))
+    return p.wait(), stdout
 
 
 class TestMatcher(unittest.TestCase):
@@ -65,7 +69,7 @@ class TestMatcher(unittest.TestCase):
         result = self.run_matcher(inp, query, **k)
         if out is not None:
             if hasattr(out, 'splitlines'):
-                out = out.splitlines()
+                out = list(filter(None, out.split(k.get('delimiter', '\n'))))
             self.assertEqual(list(out), result)
         return out
 
@@ -92,6 +96,10 @@ class TestMatcher(unittest.TestCase):
     def test_positions(self):
         ' Output of positions '
         self.basic_test('abc\nac', 'ac', '0,1:ac\n0,2:abc', positions=True)
+
+    def test_delimiter(self):
+        ' Test using a custom line delimiter '
+        self.basic_test('abc\n21ac', 'ac', 'ac1abc\n2', delimiter='1')
 
     def test_scoring(self):
         ' Scoring algorithm '

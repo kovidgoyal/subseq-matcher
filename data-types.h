@@ -66,7 +66,7 @@ VECTOR_OF(text_t, Chars)
 VECTOR_OF(Candidate, Candidates)
 
 
-void output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_len);
+void output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_len, char delim);
 void* alloc_workspace(len_t max_haystack_len, GlobalData*);
 void* free_workspace(void *v);
 double score_item(void *v, text_t *haystack, len_t haystack_len, len_t *match_positions);

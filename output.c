@@ -142,7 +142,7 @@ output_positions(len_t *positions, len_t num) {
 
 
 static void
-output_result(Candidate *c, args_info *opts, len_t needle_len) {
+output_result(Candidate *c, args_info *opts, len_t needle_len, char delim) {
     UNUSED(opts);
     if (opts->positions_flag) output_positions(c->positions, needle_len);
     if (mark_before_sz > 0 || mark_after_sz > 0) {
@@ -150,12 +150,12 @@ output_result(Candidate *c, args_info *opts, len_t needle_len) {
     } else {
         write_text(c->src, c->src_sz);
     }
-    buffered_write("\n", 1);
+    buffered_write(&delim, 1);
 }
 
 
 void
-output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_len) {
+output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_len, char delim) {
     Candidate *c;
     qsort(haystack, count, sizeof(*haystack), cmpscore);
     size_t left = opts->limit_arg > 0 ? (size_t)opts->limit_arg : count;
@@ -163,7 +163,7 @@ output_results(Candidate *haystack, size_t count, args_info *opts, len_t needle_
     if (opts->mark_after_arg) mark_after_sz = unescape(opts->mark_after_arg, mark_after, sizeof(mark_before) - 1);
     for (size_t i = 0; i < left; i++) {
         c = haystack + i;
-        if (c->score > 0) output_result(c, opts, needle_len);
+        if (c->score > 0) output_result(c, opts, needle_len, delim);
     }
     if (write_buf_sz > 0) eintr_write();
 }

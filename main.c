@@ -163,7 +163,7 @@ read_stdin(args_info *opts, char delimiter) {
         global.haystack = haystack;
         global.haystack_count = SIZE(candidates);
         ret = run_threaded(opts->threads_arg);
-        if (ret == 0) output_results(haystack, SIZE(candidates), opts, global.needle_len);
+        if (ret == 0) output_results(haystack, SIZE(candidates), opts, global.needle_len, delimiter);
         else { REPORT_OOM; }
     } else { ret = 1; REPORT_OOM; }
 
