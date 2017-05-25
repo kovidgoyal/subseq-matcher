@@ -34,7 +34,10 @@ def run(input_data,
         str(threads)
     ]
     if mark:
-        cmd.extend(['-b', r'\e[32m', '-a', r'\e[39m'])
+        if mark is True:
+            cmd.extend(['-b', r'\e[32m', '-a', r'\e[39m'])
+        else:
+            cmd.extend(['-b', mark, '-a', mark])
     for i in '123':
         val = locals()['level' + i]
         if val is not None:
@@ -88,6 +91,16 @@ class TestMatcher(unittest.TestCase):
         self.basic_test('archer\nelementary', 'e', 'elementary\narcher')
         # Match at level factor
         self.basic_test('xxxy\nxx/y', 'y', 'xx/y\nxxxy')
+        # CamelCase
+        self.basic_test('xxxy\nxxxY', 'y', 'xxxY\nxxxy')
+        # Total length
+        self.basic_test('xxxya\nxxxy', 'y', 'xxxy\nxxxya')
+        # Distance
+        self.basic_test('abbc\nabc', 'ac', 'abc\nabbc')
+        # Extreme chars
+        self.basic_test('xxa\naxx', 'a', 'axx\nxxa')
+        # Highest score
+        self.basic_test('xa/a', 'a', 'xa/|a|', mark='|')
 
     def test_threading(self):
         ' Test matching on a large data set with different number of threads '
