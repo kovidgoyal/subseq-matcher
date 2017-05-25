@@ -145,7 +145,7 @@ calc_score(WorkSpace *w) {
     len_t distance, pos;
     for (len_t i = 0; i < w->needle_len; i++) {
         pos = POSITION(i);
-        if (i == 0) distance = pos;
+        if (i == 0) distance = pos < LEN_MAX ? pos + 1 : LEN_MAX;
         else {
             distance = pos - POSITION(i-1);
             if (distance < 2) {
