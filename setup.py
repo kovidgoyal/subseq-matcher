@@ -175,7 +175,7 @@ def getopt(args, show_help=False):
     with open('cli.ggo', 'rb') as f1, open(self_path, 'rb') as f2:
         current_sig = hashlib.sha256(f1.read() + f2.read()).hexdigest()
     if current_sig != sig:
-        run_tool('gengetopt -i cli.ggo -F cli -u --default-optional -G')
+        run_tool('gengetopt -i cli.ggo -F cli -u --default-optional -G -n')
         with open('cli.c', 'r+b') as f:
             raw = f.read().decode('utf-8')
             raw = '/* ' + current_sig + ' */\n' + raw

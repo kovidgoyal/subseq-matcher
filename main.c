@@ -188,12 +188,67 @@ lowercase(text_t *str, len_t sz) {
     global.name##_len = (len_t)decode_string(src, arglen, global.name); \
     lowercase(global.name, global.name##_len)
 
+#ifndef ISWINDOWS
+#include <unistd.h>
+#endif
+
+#ifndef gengetopt_args_info_versiontext
+extern const char* gengetopt_args_info_versiontext;
+#endif
+
+static void
+print_help() {
+    int istty = 0, i = -1;
+    const char *p, *p2;
+#ifndef ISWINDOWS
+    istty = isatty(STDOUT_FILENO);
+#endif
+    if (strlen(gengetopt_args_info_usage) > 0) {
+        p = gengetopt_args_info_usage;
+        if (istty) {
+            p = strstr(p, " ") + 1;
+            p2 = strstr(p, " ");
+            printf("\x1b[m\x1b[34m\x1b[1mUsage\x1b[m:\x1b[33m\x1b[1m %.*s\x1b[m", (int)(p2 - p), p); 
+            p = p2;
+        }
+        printf("%s\n", p);
+    }
+    if (strlen(gengetopt_args_info_description) > 0) {
+        printf("\n%s\n", gengetopt_args_info_description);
+    }
+    if (istty) printf("\x1b[34m\x1b[1mOptions\x1b[m:\n");
+    else printf("Options:\n");
+    while (gengetopt_args_info_help[++i]) {
+        p = gengetopt_args_info_help[i];
+        if (!istty) { printf("%s\n", p); continue; }
+        if (p[0] == '\n') {
+            p2 = strstr(p, ":");
+            printf("\x1b[34m\x1b[1m%.*s\x1b[m:\n", (int)(p2 - p), p);
+        } else {
+            p += 2;
+            p2 = strstr(p, "  ");
+            printf("  \x1b[32m%.*s\x1b[m%s\n", (int)(p2 - p), p, p2);
+        }
+    }
+    if (strlen(gengetopt_args_info_versiontext) > 0) {
+        printf("\n");
+        p = gengetopt_args_info_versiontext;
+        if (!istty) printf("%s\n", p);
+        else {
+            p2 = strstr(p, "by ") + 3;
+            printf("%.*s\x1b[36m%s\x1b[m\n", (int)(p2 - p), p, p2);
+        }
+    }
+}
+
 int 
 main(int argc, char *argv[]) {
     args_info opts;
     int ret = 0;
     size_t arglen;
     char delimiter[10] = {0};
+    if (cmdline_parser(argc, argv, &opts) != 0) return 1;
+    if (opts.help_given) { print_help(); return 0; }
 
 #ifdef ISWINDOWS
     if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
@@ -209,7 +264,6 @@ main(int argc, char *argv[]) {
     }
 #endif
 
-    if (cmdline_parser(argc, argv, &opts) != 0) return 1;
     if (opts.inputs_num != 1) {
         fprintf(stderr, "You must specify a single query\n");
         ret = 1; 
