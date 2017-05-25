@@ -63,6 +63,8 @@ struct gengetopt_args_info
   char * mark_after_arg;	/**< @brief String to output after each matched character.  */
   char * mark_after_orig;	/**< @brief String to output after each matched character original value given at command line.  */
   const char *mark_after_help; /**< @brief String to output after each matched character help description.  */
+  int positions_flag;	/**< @brief Output match positions in the form <number>,<number>,...: before each result (default=off).  */
+  const char *positions_help; /**< @brief Output match positions in the form <number>,<number>,...: before each result help description.  */
   
   unsigned int help_given ;	/**< @brief Whether help was given.  */
   unsigned int version_given ;	/**< @brief Whether version was given.  */
@@ -74,6 +76,7 @@ struct gengetopt_args_info
   unsigned int limit_given ;	/**< @brief Whether limit was given.  */
   unsigned int mark_before_given ;	/**< @brief Whether mark-before was given.  */
   unsigned int mark_after_given ;	/**< @brief Whether mark-after was given.  */
+  unsigned int positions_given ;	/**< @brief Whether positions was given.  */
 
   char **inputs ; /**< @brief unamed options (options without names) */
   unsigned inputs_num ; /**< @brief unamed options number */

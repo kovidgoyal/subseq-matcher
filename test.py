@@ -19,6 +19,7 @@ def run(input_data,
         query,
         threads=1,
         mark=False,
+        positions=False,
         level1=None,
         level2=None,
         level3=None):
@@ -38,6 +39,8 @@ def run(input_data,
             cmd.extend(['-b', r'\e[32m', '-a', r'\e[39m'])
         else:
             cmd.extend(['-b', mark, '-a', mark])
+    if positions:
+        cmd.append('-p')
     for i in '123':
         val = locals()['level' + i]
         if val is not None:
@@ -86,7 +89,12 @@ class TestMatcher(unittest.TestCase):
             '\x1b[32mt\x1b[39me\x1b[32ms\x1b[39mt',
             mark=True)
 
+    def test_positions(self):
+        ' Output of positions '
+        self.basic_test('abc\nac', 'ac', '0,1:ac\n0,2:abc', positions=True)
+
     def test_scoring(self):
+        ' Scoring algorithm '
         # Match at start
         self.basic_test('archer\nelementary', 'e', 'elementary\narcher')
         # Match at level factor

@@ -132,10 +132,19 @@ output_with_marks(text_t *src, size_t src_sz, len_t *positions, len_t poslen) {
     if (i + 1 < src_sz) write_text(src + i + 1, src_sz - i - 1);
 }
 
+static void
+output_positions(len_t *positions, len_t num) {
+    static char pbuf[100] = {0};
+    for (len_t i = 0; i < num; i++) {
+        buffered_write(pbuf, snprintf(pbuf, sizeof(pbuf), "%u%s", positions[i], (i == num - 1) ? ":" : ","));
+    }
+}
+
 
 static void
 output_result(Candidate *c, args_info *opts, len_t needle_len) {
     UNUSED(opts);
+    if (opts->positions_flag) output_positions(c->positions, needle_len);
     if (mark_before_sz > 0 || mark_after_sz > 0) {
         output_with_marks(c->src, c->src_sz, c->positions, needle_len);
     } else {

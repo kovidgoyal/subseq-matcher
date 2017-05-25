@@ -39,3 +39,5 @@ option "mark-before" b "String to output before each matched character"
 
 option "mark-after" a "String to output after each matched character"
     string 
+
+option "positions" p "Output match positions in the form <number>,<number>,...: before each result" flag off
