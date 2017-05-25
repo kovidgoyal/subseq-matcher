@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 typedef struct {
     size_t start, count;
@@ -193,6 +194,20 @@ main(int argc, char *argv[]) {
     int ret = 0;
     size_t arglen;
     char delimiter[10] = {0};
+
+#ifdef ISWINDOWS
+    if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
+        perror("Failed to set binary mode on stdin");
+        ret = 1; 
+        goto end;
+    }
+
+    if (_setmode(_fileno(stdout), _O_BINARY) == -1) {
+        perror("Failed to set binary mode on stdout");
+        ret = 1; 
+        goto end;
+    }
+#endif
 
     if (cmdline_parser(argc, argv, &opts) != 0) return 1;
     if (opts.inputs_num != 1) {
