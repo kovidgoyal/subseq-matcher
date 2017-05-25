@@ -11,12 +11,9 @@ import subprocess
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 raw = open('cli.ggo', 'rb').read().decode('utf-8')
-nv = re.search(
-    r'^version\s+"(\d+).(\d+).(\d+)"',
-    raw, flags=re.MULTILINE)
+nv = re.search(r'^version\s+"(\d+).(\d+).(\d+)"', raw, flags=re.MULTILINE)
 version = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
-appname = re.search(
-    r'^package\s+"([^"]+)"', raw, flags=re.MULTILINE).group(1)
+appname = re.search(r'^package\s+"([^"]+)"', raw, flags=re.MULTILINE).group(1)
 
 
 def call(*cmd):
@@ -46,7 +43,12 @@ def run_tag():
 
 
 def main():
-    if input('Publish version: \x1b[31m\x1b[1m{}\x1b[m (y/n): ') == 'y':
+    try:
+        ok = input('Publish version: \x1b[31m\x1b[1m{}\x1b[m (y/n): '
+                   .format(version))
+    except KeyboardInterrupt:
+        ok = 'n'
+    if ok == 'y':
         for action in ('build', 'test', 'commit', 'tag'):
             print('Running', action)
             cwd = os.getcwd()
