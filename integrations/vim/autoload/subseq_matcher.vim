@@ -77,6 +77,8 @@ def ctrlp_subseq_implementation():
         if not ispy3:
             query = query.encode('utf-8')
         cmd = ['-p', query]
+        if limit > 0:
+            cmd.extend(['--limit', str(limit)])
         p = popen(cmd)
         results = p.communicate(inp)[0].decode('utf-8').splitlines()
         results = list(
