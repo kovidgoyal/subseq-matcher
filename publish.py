@@ -27,17 +27,31 @@ def call(*cmd):
         raise SystemExit(ret)
 
 
+def run_build():
+    call('make')
+
+
+def run_test():
+    call('make test')
+
+
+def run_commit():
+    call('git commit -am "version {}"'.format(version))
+
+
 def run_tag():
     call('git tag -s v{0} -m version-{0}'.format(version))
     call('git push origin v{0}'.format(version))
+    call('git push')
 
 
 def main():
-    for action in ('tag',):
-        print('Running', action)
-        cwd = os.getcwd()
-        globals()['run_' + action]()
-        os.chdir(cwd)
+    if input('Publish version: \x1b[31m\x1b[1m{}\x1b[m (y/n): ') == 'y':
+        for action in ('build', 'test', 'commit', 'tag'):
+            print('Running', action)
+            cwd = os.getcwd()
+            globals()['run_' + action]()
+            os.chdir(cwd)
 
 
 if __name__ == '__main__':
