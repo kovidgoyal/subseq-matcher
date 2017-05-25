@@ -16,7 +16,8 @@ import sys
 import sysconfig
 from collections import namedtuple
 
-base = os.path.dirname(os.path.abspath(__file__))
+self_path = os.path.abspath(__file__)
+base = os.path.dirname(self_path)
 build_dir = os.path.join(base, 'build')
 _plat = sys.platform.lower()
 isosx = 'darwin' in _plat
@@ -171,8 +172,8 @@ def getopt(args, show_help=False):
         sig = line[3:-3]
     except Exception:
         sig = None
-    with open('cli.ggo', 'rb') as f:
-        current_sig = hashlib.sha256(f.read()).hexdigest()
+    with open('cli.ggo', 'rb') as f1, open(self_path, 'rb') as f2:
+        current_sig = hashlib.sha256(f1.read() + f2.read()).hexdigest()
     if current_sig != sig:
         run_tool('gengetopt -i cli.ggo -F cli -u --default-optional -G')
         with open('cli.c', 'r+b') as f:
