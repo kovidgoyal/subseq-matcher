@@ -52,8 +52,7 @@ extension separators (``/ and .``) as well as underscores, camelCase
 characters and spaces. These can be easily changed via command line options
 allowing the algorithm to be tuned for specific scenarios, as desired.
 
-The anchors used as well as various other options can be customized via command
-line options, see ``subseq-matcher -h``.
+Run ``subseq-matcher -h`` for a list of command line options.
 
 
 Performance
