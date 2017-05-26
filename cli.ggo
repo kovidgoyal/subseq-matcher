@@ -7,7 +7,13 @@ Filter a newline separated list of strings from STDIN to STDOUT based on the que
 Does subsequence matching of the query and returns the results sorted by relevance.
 
 Subsequence matching has configurable \"special characters\". If a matched \
-character occurs immediately after one of these, it's score is higher.
+character occurs immediately after one of these, it's score is higher. For
+more details on the algorithm, see https://github.com/kovidgoyal/subseq-matcher
+
+STDIN must be UTF-8 encoded and STDOUT will also be UTF-8 encoded.  The query
+string must also be UTF-8 encoded. If you want to process string in another
+encoding, pipe them through iconv or similar.
+
 "
 
 section "Control operation"
