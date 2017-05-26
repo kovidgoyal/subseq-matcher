@@ -12,6 +12,18 @@ executing a command from your shell history, with only a few keystrokes.
 Look at the `integrations <integrations>`_ directory to see how to integrate
 `subseq-matcher` with various programs.
 
+Installation
+-------------
+
+As simple as:
+
+.. code-block:: sh
+
+    make && sudo make install
+
+This will install ``/usr/bin/subseq-matcher``.
+
+
 .. |unix_build| image:: https://api.travis-ci.org/kovidgoyal/subseq-matcher.svg
     :target: http://travis-ci.org/kovidgoyal/subseq-matcher
     :alt: Build status of the master branch on Unix

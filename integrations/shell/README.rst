@@ -11,7 +11,7 @@ zsh
 Add the following snippet to your ``~/.zshrc`` to have ``Ctrl-R`` launch the
 interactive history browser:
 
-.. code-block::
+.. code-block:: sh
 
     function select_history() {
         local choice
