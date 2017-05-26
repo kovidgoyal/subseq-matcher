@@ -68,10 +68,10 @@ Acknowledgements
 
 Sub-sequence matching is obviously not new. It has a long history, the first
 time I came across it personally, was in the ``Command-T`` and
-``YouCompleteMe`` plugins for vim. However, as found myself wanting to use it
-in more and more contexts, it made sense to separate out the core algorithm
-into a standalone utility that makes it easy to integrate into different
-contexts.
+``YouCompleteMe`` plugins for vim. However, as I quickly found myself wanting
+to use it in more and more contexts, it made sense to separate out the core
+algorithm into a standalone utility that makes it easy to integrate into
+different work flows.
 
 
 .. |unix_build| image:: https://api.travis-ci.org/kovidgoyal/subseq-matcher.svg
