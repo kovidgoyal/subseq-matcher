@@ -1,0 +1,492 @@
+#!/usr/bin/env python3
+# vim:fileencoding=utf-8
+# License: GPLv3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
+
+# imports {{{
+from __future__ import print_function
+
+import argparse
+import codecs
+import ctypes
+import curses
+import fcntl
+import os
+import re
+import select
+import signal
+import string
+import struct
+import subprocess
+import sys
+import termios
+from collections import namedtuple
+from operator import itemgetter
+from time import monotonic
+
+# }}}
+
+# Terminal interface {{{
+libc = ctypes.CDLL(None)
+wcwidth = libc.wcwidth
+wcwidth.argtypes = [ctypes.c_wchar]
+Event = namedtuple('Event', 'at callback args')
+Size = namedtuple('WinSize', 'rows columns pixel_width pixel_height')
+get_at = itemgetter(0)
+
+
+def pipe2():
+    try:
+        read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    except AttributeError:
+        read_fd, write_fd = os.pipe()
+        for fd in (read_fd, write_fd):
+            flag = fcntl.fcntl(fd, fcntl.F_GETFD)
+            fcntl.fcntl(fd, fcntl.F_SETFD, flag | fcntl.FD_CLOEXEC)
+            flag = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, flag | os.O_NONBLOCK)
+    return read_fd, write_fd
+
+
+def handle_unix_signals():
+    read_fd, write_fd = pipe2()
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGWINCH):
+        signal.signal(sig, lambda x, y: None)
+        signal.siginterrupt(sig, False)
+    signal.set_wakeup_fd(write_fd)
+    return read_fd
+
+
+class Handler:
+
+    def on_char(self, ch):
+        pass
+
+    def on_key(self, name):
+        pass
+
+    def on_resize(self, new_size):
+        pass
+
+    def on_interrupt(self):
+        pass
+
+    def on_terminate(self):
+        pass
+
+    def on_normal_exit(self):
+        pass
+
+
+class Timers:
+
+    def __init__(self):
+        self.timers = []
+
+    def _add(self, delay, callback, args):
+        self.timers.append(Event(monotonic() + delay, callback, args))
+        self.timers.sort(key=get_at)
+
+    def add(self, delay, callback, *args):
+        self.remove(callback)
+        self._add(delay, callback, args)
+
+    def add_if_missing(self, delay, callback, *args):
+        for ev in self.timers:
+            if ev.callback == callback:
+                return
+        self._add(delay, callback, args)
+
+    def remove(self, callback):
+        for i, ev in enumerate(self.timers):
+            if ev.callback == callback:
+                break
+        else:
+            return
+        del self.timers[i]
+
+    def timeout(self):
+        if self.timers:
+            return max(0, self.timers[0][0] - monotonic())
+
+    def __call__(self):
+        if self.timers:
+            now = monotonic()
+            expired_timers, waiting_timers = [], []
+            for ev in self.timers:
+                (expired_timers if ev[0] <= now else waiting_timers).append(ev)
+            self.timers = waiting_timers
+            for ev in expired_timers:
+                ev.callback(*ev.args)
+
+
+class Terminal:
+
+    def __init__(self, out_fd=None, in_fd=None, esc_timeout=0.1):
+        self.keep_going = True
+        self._current_size = None
+        self.esc_timeout = esc_timeout
+        self.timers = Timers()
+        self.in_fd = os.open(
+            '/dev/tty', os.O_RDONLY
+        ) if in_fd is None else in_fd
+        self.out_fd = os.open(
+            '/dev/tty', os.O_WRONLY
+        ) if out_fd is None else out_fd
+        self.signal_fd = handle_unix_signals()
+        curses.setupterm(os.environ['TERM'], self.out_fd)
+        self.input_handler = self.get_text
+        self.utf8_decoder = codecs.getincrementaldecoder('utf-8')(
+            errors='strict'
+        )
+        self.kbs = curses.tigetstr('kbs').decode('utf-8')
+
+    def __enter__(self):
+        self.old = termios.tcgetattr(self.out_fd)
+        attrs = list(self.old)
+        attrs[3] &= ~termios.ECHO
+        attrs[3] &= ~termios.ICANON
+        # make read() block
+        attrs[-1][termios.VTIME] = b'\x00'
+        attrs[-1][termios.VMIN] = b'\x01'
+        termios.tcsetattr(self.out_fd, termios.TCSADRAIN, attrs)
+        self._write(curses.tigetstr('smcup'))
+        self._write(curses.tigetstr('rmkx'))
+        self.clear()
+
+    def __exit__(self, exc_type, exc_value, tb):
+        termios.tcsetattr(self.out_fd, termios.TCSADRAIN, self.old)
+        self._write(curses.tigetstr('rmcup'))
+
+    def _write(self, s):
+        if isinstance(s, str):
+            s = s.encode('utf-8')
+        os.write(self.out_fd, s)
+
+    def clear(self):
+        self._write(curses.tigetstr('clear'))
+
+    @property
+    def size(self):
+        if self._current_size is None:
+            self._current_size = Size(
+                *struct.unpack(
+                    'HHHH',
+                    fcntl.ioctl(self.out_fd, termios.TIOCGWINSZ, b'0' * 8)
+                )
+            )
+        return self._current_size
+
+    def move(self, x=0, y=0):
+        ' move cursor to the specified location, upper-left is (0, 0) '
+        self._write(curses.tparm(curses.tigetstr('cup'), y, x))
+
+    def write(self, *a, **kw):
+        text = kw.get('sep', ' ').join(map(str, a))
+        self._write(text.encode('utf-8'))
+
+    def bell(self):
+        self._write(curses.tigetstr('bel'))
+
+    def loop(self, handler):
+        self.handler = handler
+        read_fds = [self.in_fd, self.signal_fd]
+        s = select.select
+        while self.keep_going:
+            readers, _, _ = s(read_fds, [], [], self.timers.timeout())
+            for fd in readers:
+                if fd is self.in_fd:
+                    raw = os.read(fd, 1)
+                    if not raw:
+                        raise SystemExit(1)
+                    self.input_handler(raw)
+                elif fd is self.signal_fd:
+                    self.signal_received()
+            self.timers()
+        self.handler.on_normal_exit()
+
+    def signal_received(self):
+        try:
+            data = os.read(self.signal_fd, 1024)
+        except BlockingIOError:  # noqa
+            return
+        if data:
+            signals = struct.unpack('%uB' % len(data), data)
+            for s in signals:
+                if s == signal.SIGINT:
+                    self.handler.on_interrupt()
+                elif s == signal.SIGTERM:
+                    self.handler.on_terminate()
+                elif s == signal.SIGWINCH:
+                    self._current_size = None
+                    self.handler.on_resize(self.size)
+
+    def get_text(self, raw):
+        try:
+            ch = self.utf8_decoder.decode(raw)
+        except ValueError:
+            self.utf8_decoder.reset()
+            return
+        if ch == '\033':
+            self.input_handler = self.parse_esc
+            self.timers.add(self.esc_timeout, self.report_single_esc)
+        elif ch == '\n':
+            self.handler.on_key('enter')
+        elif ch == self.kbs:
+            self.handler.on_key('bs')
+        elif ch:
+            self.handler.on_char(ch)
+
+    def report_single_esc(self):
+        self.handler.on_key('esc')
+
+    def parse_esc(self, raw):
+        self.timers.remove(self.report_single_esc)
+        if raw == b'[':
+            self.csi_buffer = []
+            self.input_handler = self.parse_csi
+        else:
+            self.report_single_esc()
+            self.input_handler = self.get_text
+            self.get_text(raw)
+
+    def parse_csi(self, raw):
+        try:
+            ch = raw.decode('ascii')
+        except ValueError:
+            self.input_handler = self.get_text
+        self.csi_buffer.append(ch)
+        if ch in string.ascii_uppercase or raw in string.ascii_lowercase:
+            self.input_handler = self.get_text
+            csi = ''.join(self.csi_buffer)
+            if csi in 'ABCDHF':
+                self.handler.on_key({
+                    'A': 'up',
+                    'B': 'down',
+                    'D': 'left',
+                    'C': 'right',
+                    'H': 'home',
+                    'F': 'end'
+                }[csi])
+
+        if len(self.csi_buffer) > 100:
+            self.input_handler = self.get_text
+
+
+# }}}
+
+
+def safe_wcwidth(c):
+    return max(0, wcwidth(c))
+
+
+def string_width(text):
+    return sum(map(safe_wcwidth, text))
+
+
+def draw_current_list(terminal, filtered_items, current_match=0):
+    sz = terminal.size
+    width, height = sz.columns, sz.rows
+    max_width = width - 3
+    for i, text in enumerate(filtered_items):
+        row = i + 1
+        if row >= height:
+            break
+        terminal.move(x=3, y=row)
+        if i == current_match:
+            terminal.write('\033[7m')
+        extra = string_width(strip_escapes(text)) - max_width
+        if extra > 0:
+            text = reduce_text(text, extra + 1) + '\N{HORIZONTAL ELLIPSIS}'
+        terminal.write(text)
+        terminal.write('\033[m')
+
+
+def draw_query(terminal, expression, prompt='Query: '):
+    terminal.move()
+    terminal.write(prompt + expression)
+
+
+def strip_escapes(line):
+    return re.sub('\x1b[[].*?m', '', line)
+
+
+def reduce_text(text, amt):
+    parts = re.split('(\x1b[[].*?m)', text)
+    i = len(parts) - 1
+    while amt > 0 and i > -1:
+        x = parts[i]
+        if not x.startswith('\x1b'):
+            l = string_width(x)
+            remove = min(amt, l)
+            amt -= remove
+            parts[i] = parts[i][:-remove]
+        i -= 1
+    return ''.join(parts)
+
+
+def filter_items(expression, items, is_file):
+    if expression:
+        inp = '\n'.join(items).encode('utf-8')
+        cmd = ['subseq-matcher', '-b', r'\e[32m', '-a', r'\e[39m']
+        if not is_file:
+            cmd += ['-1', '/ -_', '-2', '"\'', '-3', '.']
+        cmd.append(expression)
+        p = subprocess.Popen(
+            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        stdout = p.communicate(inp)[0]
+        if p.wait() != 0:
+            raise SystemExit(p.returncode)
+        items = stdout.decode('utf-8').splitlines()
+    return items
+
+
+class Choose(Handler):
+
+    def __init__(self, terminal, args, items, filtered_items):
+        self.terminal, self.args, self.items = terminal, args, items
+        self.filtered_items = filtered_items
+        self.current_match = 0
+        self.expression_for_current_filter = self.current_expression = \
+            args.expression
+        self.draw_screen()
+        self.ans = None
+
+    def draw_screen(self):
+        self.terminal.clear()
+        draw_current_list(
+            self.terminal, self.filtered_items,
+            self.current_match
+        )
+        draw_query(self.terminal, self.current_expression)
+
+    def refilter(self):
+        self.current_match = 0
+        items = self.items
+        if self.current_expression.startswith(
+                self.expression_for_current_filter) and \
+                len(items) > len(self.filtered_items) + 100:
+            items = map(strip_escapes, self.filtered_items)
+        self.filtered_items = filter_items(
+            self.current_expression, items, self.args.paths
+        )
+        self.expression_for_current_filter = self.current_expression
+
+    def on_char(self, ch):
+        self.current_expression += ch
+        self.refilter()
+        self.draw_screen()
+
+    def on_key(self, name):
+        if name == 'esc':
+            self.terminal.keep_going = False
+        elif name == 'up':
+            if self.current_match > 0:
+                self.current_match -= 1
+                self.draw_screen()
+        elif name == 'down':
+            if self.current_match < min(
+                self.terminal.size[1] - 1, len(self.filtered_items)
+            ) - 1:
+                self.current_match += 1
+                self.draw_screen()
+        elif name == 'bs':
+            if self.current_expression:
+                self.current_expression = self.current_expression[:-1]
+                self.refilter()
+                self.draw_screen()
+            else:
+                self.terminal.bell()
+        elif name == 'enter':
+            self.terminal.keep_going = False
+            try:
+                self.ans = strip_escapes(
+                    self.filtered_items[self.current_match])
+            except IndexError:
+                pass
+
+    def on_interrupt(self):
+        self.terminal.keep_going = False
+
+    on_terminate = on_interrupt
+
+    def on_resize(self, new_size):
+        self.draw_screen()
+
+
+# main() {{{
+
+
+def show_ui(func, *args):
+    terminal = Terminal()
+    with terminal:
+        handler = func(terminal, *args)
+        try:
+            terminal.loop(handler)
+        except KeyboardInterrupt:
+            raise SystemExit(1)
+    if handler.ans:
+        print(handler.ans, end='')
+
+
+def option_parser():
+    a = argparse.ArgumentParser(
+        description='Choose from a list of entries read from stdin'
+    )
+    a.add_argument(
+        'expression',
+        nargs='?',
+        default='',
+        help='Initial expression to filter by'
+    )
+    a.add_argument(
+        '--filter',
+        default=False,
+        action='store_true',
+        help='Run in filter mode, apply the specified expression'
+        ' and output the filtered results to stdout'
+    )
+    a.add_argument(
+        '--reverse',
+        default=False,
+        action='store_true',
+        help='Reverse the sorting order'
+    )
+    a.add_argument(
+        '--paths',
+        default=False,
+        action='store_true',
+        help='Assume input items are paths'
+    )
+    a.add_argument(
+        '--color',
+        default='auto',
+        choices='auto always never'.split(),
+        help='Whether to colorize the output in filter mode'
+    )
+    return a
+
+
+def main():
+    args = option_parser().parse_args()
+    items = filtered_items = sys.stdin.read().splitlines()
+    if args.expression:
+        filtered_items = filter_items(
+            args.expression, items, args.paths
+        )
+    if args.filter:
+        colorize = args.color == 'always' or (
+            args.color == 'auto' and sys.stdout.isatty()
+        )
+        for line in filtered_items:
+            if not colorize:
+                line = strip_escapes(line)
+            print(line)
+        return
+
+    show_ui(Choose, args, items, filtered_items)
+
+
+# }}}
+
+if __name__ == '__main__':
+    main()
