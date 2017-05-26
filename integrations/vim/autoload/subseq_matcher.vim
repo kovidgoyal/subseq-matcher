@@ -31,7 +31,6 @@ def ctrlp_subseq_implementation():
     import sys
     import vim
     exe = vim.eval('g:subseq_matcher_exe')
-    ispy3 = sys.version_info.major >= 3
     if hasattr(sys, 'getwindowsversion'):
         import msvcrt
 
@@ -74,8 +73,7 @@ def ctrlp_subseq_implementation():
         f = mmode_map.get(mmode)
         line_map = {} if f is None else {f(l): l for l in lines}
         inp = '\n'.join(lines).encode('utf-8')
-        if not ispy3:
-            query = query.encode('utf-8')
+        query = query.encode('utf-8')
         cmd = ['-p', query]
         if limit > 0:
             cmd.extend(['--limit', str(limit)])
