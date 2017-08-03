@@ -55,6 +55,7 @@ unescape(char *src, char *dest, size_t destlen) {
                         i += 2;
                         break;
                     } 
+                    /* fallthrough */
                 default:
                     S(src[i+1]);
             }
