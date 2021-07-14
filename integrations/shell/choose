@@ -307,7 +307,7 @@ def draw_query(terminal, expression, prompt='Query: '):
 
 
 def strip_escapes(line):
-    return re.sub('\x1b[[].*?m', '', line)
+    return re.sub('\x1b\\[.*?m', '', line)
 
 
 def reduce_text(text, amt):
@@ -316,8 +316,7 @@ def reduce_text(text, amt):
     while amt > 0 and i > -1:
         x = parts[i]
         if not x.startswith('\x1b'):
-            l = string_width(x)
-            remove = min(amt, l)
+            remove = min(amt, string_width(x))
             amt -= remove
             parts[i] = parts[i][:-remove]
         i -= 1
